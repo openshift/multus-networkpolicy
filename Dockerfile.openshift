@@ -1,12 +1,12 @@
 # This dockerfile is specific to building Multus for OpenShift
-FROM openshift/origin-release:golang-1.14 as build
+FROM registry.ci.openshift.org/ocp/builder:rhel-8-golang-1.16-openshift-4.8 AS build
 
 # Add everything
 ADD . /usr/src/multi-networkpolicy-iptables
 WORKDIR /usr/src/multi-networkpolicy-iptables
 RUN go build ./cmd/multi-networkpolicy-iptables/
 
-FROM registry.access.redhat.com/ubi8/ubi:latest
+FROM registry.ci.openshift.org/ocp/4.8:base
 RUN dnf install -y iptables
 COPY --from=build /usr/src/multi-networkpolicy-iptables/multi-networkpolicy-iptables /usr/bin
 WORKDIR /usr/bin
