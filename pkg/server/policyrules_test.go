@@ -130,7 +130,9 @@ func AddNamespace(s *Server, name string) {
 	namespace := &v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
-			//Labels: labels,
+			Labels: map[string]string{
+				"nsname": name,
+			},
 		},
 	}
 	Expect(s.nsChanges.Update(nil, namespace)).To(BeTrue())
@@ -268,7 +270,7 @@ var _ = Describe("policyrules testing", func() {
 							{
 								IPBlock: &multiv1beta1.IPBlock{
 									CIDR:   "10.1.1.1/24",
-									Except: []string{"10.1.1.1"},
+									Except: []string{"10.1.1.254"},
 								},
 							},
 						},
@@ -307,7 +309,7 @@ var _ = Describe("policyrules testing", func() {
 		portRules := []byte("-A MULTI-0-INGRESS-0-PORTS -i net1 -m tcp -p tcp --dport 8888 -j MARK --set-xmark 0x10000/0x10000\n")
 		Expect(buf.ingressPorts.Bytes()).To(Equal(portRules))
 
-		fromRules := []byte("-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.1 -j DROP\n-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.1/24 -j MARK --set-xmark 0x20000/0x20000\n")
+		fromRules := []byte("-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.254 -j DROP\n-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.1/24 -j MARK --set-xmark 0x20000/0x20000\n-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.1 -j MARK --set-xmark 0x20000/0x20000\n")
 		Expect(buf.ingressFrom.Bytes()).To(Equal(fromRules))
 
 		buf.FinalizeRules()
@@ -318,15 +320,16 @@ var _ = Describe("policyrules testing", func() {
 :MULTI-0-INGRESS - [0:0]
 :MULTI-0-INGRESS-0-PORTS - [0:0]
 :MULTI-0-INGRESS-0-FROM - [0:0]
+-A MULTI-INGRESS -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 -A MULTI-INGRESS -m comment --comment "policy:ingressPolicies1 net-attach-def:testns1/net-attach1" -i net1 -j MULTI-0-INGRESS
+-A MULTI-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-INGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-PORTS
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-FROM
--A MULTI-0-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
--A MULTI-0-INGRESS -j DROP
 -A MULTI-0-INGRESS-0-PORTS -i net1 -m tcp -p tcp --dport 8888 -j MARK --set-xmark 0x10000/0x10000
--A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.1 -j DROP
+-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.254 -j DROP
 -A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.1/24 -j MARK --set-xmark 0x20000/0x20000
+-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.1 -j MARK --set-xmark 0x20000/0x20000
 COMMIT
 `)
 		Expect(buf.filterRules.Bytes()).To(Equal(finalizedRules))
@@ -405,7 +408,7 @@ COMMIT
 		portRules := []byte("-A MULTI-0-INGRESS-0-PORTS -i net1 -m tcp -p tcp --dport 8888 -j MARK --set-xmark 0x10000/0x10000\n")
 		Expect(buf.ingressPorts.Bytes()).To(Equal(portRules))
 
-		fromRules := []byte("-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.2 -j MARK --set-xmark 0x20000/0x20000\n")
+		fromRules := []byte("-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.2 -j MARK --set-xmark 0x20000/0x20000\n-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.1 -j MARK --set-xmark 0x20000/0x20000\n")
 		Expect(buf.ingressFrom.Bytes()).To(Equal(fromRules))
 
 		buf.FinalizeRules()
@@ -416,17 +419,188 @@ COMMIT
 :MULTI-0-INGRESS - [0:0]
 :MULTI-0-INGRESS-0-PORTS - [0:0]
 :MULTI-0-INGRESS-0-FROM - [0:0]
+-A MULTI-INGRESS -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 -A MULTI-INGRESS -m comment --comment "policy:ingressPolicies1 net-attach-def:testns1/net-attach1" -i net1 -j MULTI-0-INGRESS
+-A MULTI-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-INGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-PORTS
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-FROM
--A MULTI-0-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
--A MULTI-0-INGRESS -j DROP
 -A MULTI-0-INGRESS-0-PORTS -i net1 -m tcp -p tcp --dport 8888 -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.2 -j MARK --set-xmark 0x20000/0x20000
+-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.1 -j MARK --set-xmark 0x20000/0x20000
 COMMIT
 `)
 		Expect(buf.filterRules.Bytes()).To(Equal(finalizedRules))
+	})
+
+	It("ingress rules namespace selector", func() {
+		ingressPolicies1 := &multiv1beta1.MultiNetworkPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "ingressPolicies1",
+				Namespace: "testns1",
+			},
+			Spec: multiv1beta1.MultiNetworkPolicySpec{
+				Ingress: []multiv1beta1.MultiNetworkPolicyIngressRule{
+					{
+						From: []multiv1beta1.MultiNetworkPolicyPeer{
+							{
+								NamespaceSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"nsname": "testns2",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		ipt := fakeiptables.NewFake()
+		Expect(ipt).NotTo(BeNil())
+		buf := newIptableBuffer()
+		Expect(buf).NotTo(BeNil())
+
+		// verify buf initialized at init
+		buf.Init(ipt)
+		s := NewFakeServer("samplehost")
+		Expect(s).NotTo(BeNil())
+
+		AddNamespace(s, "testns1")
+		AddNamespace(s, "testns2")
+
+		Expect(s.netdefChanges.Update(
+			nil,
+			NewNetDef("testns1", "net-attach1", NewCNIConfig("testCNI", "multi")))).To(BeTrue())
+		Expect(s.netdefChanges.GetPluginType(types.NamespacedName{Namespace: "testns1", Name: "net-attach1"})).To(Equal("multi"))
+		Expect(s.netdefChanges.Update(
+			nil,
+			NewNetDef("testns2", "net-attach1", NewCNIConfig("testCNI", "multi")))).To(BeTrue())
+		Expect(s.netdefChanges.GetPluginType(types.NamespacedName{Namespace: "testns2", Name: "net-attach1"})).To(Equal("multi"))
+
+		pod1 := NewFakePodWithNetAnnotation(
+			"testns1",
+			"testpod1",
+			"net-attach1",
+			NewFakeNetworkStatus("testns1", "net-attach1", "192.168.1.1", "10.1.1.1"),
+			nil)
+		AddPod(s, pod1)
+		podInfo1, err := s.podMap.GetPodInfo(pod1)
+		Expect(err).To(BeNil())
+
+		pod2 := NewFakePodWithNetAnnotation(
+			"testns2",
+			"testpod2",
+			"net-attach1",
+			NewFakeNetworkStatus("testns2", "net-attach1", "192.168.1.2", "10.1.1.2"),
+			nil)
+		AddPod(s, pod2)
+		buf.renderIngress(s, podInfo1, 0, ingressPolicies1, []string{"testns1/net-attach1", "testns2/net-attach1"})
+
+		buf.FinalizeRules()
+		finalizedRules := []byte(
+			`*filter
+:MULTI-INGRESS - [0:0]
+:MULTI-EGRESS - [0:0]
+:MULTI-0-INGRESS - [0:0]
+:MULTI-0-INGRESS-0-PORTS - [0:0]
+:MULTI-0-INGRESS-0-FROM - [0:0]
+-A MULTI-INGRESS -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A MULTI-INGRESS -m comment --comment "policy:ingressPolicies1 net-attach-def:testns1/net-attach1" -i net1 -j MULTI-0-INGRESS
+-A MULTI-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
+-A MULTI-0-INGRESS -j MARK --set-xmark 0x0/0x30000
+-A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-PORTS
+-A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-FROM
+-A MULTI-0-INGRESS-0-PORTS -m comment --comment "no ingress ports, skipped" -j MARK --set-xmark 0x10000/0x10000
+-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.2 -j MARK --set-xmark 0x20000/0x20000
+-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.1 -j MARK --set-xmark 0x20000/0x20000
+COMMIT
+`)
+
+		Expect(buf.filterRules.String()).To(Equal(string(finalizedRules)))
+	})
+
+	It("enforce policy with net-attach-def in a different namespace than pods", func() {
+		ingressPolicies1 := &multiv1beta1.MultiNetworkPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "ingressPolicies1",
+				Namespace: "testns1",
+			},
+			Spec: multiv1beta1.MultiNetworkPolicySpec{
+				Ingress: []multiv1beta1.MultiNetworkPolicyIngressRule{
+					{
+						From: []multiv1beta1.MultiNetworkPolicyPeer{
+							{
+								NamespaceSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"nsname": "testns2",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		ipt := fakeiptables.NewFake()
+		Expect(ipt).NotTo(BeNil())
+		buf := newIptableBuffer()
+		Expect(buf).NotTo(BeNil())
+
+		// verify buf initialized at init
+		buf.Init(ipt)
+		s := NewFakeServer("samplehost")
+		Expect(s).NotTo(BeNil())
+
+		AddNamespace(s, "default")
+		AddNamespace(s, "testns1")
+		AddNamespace(s, "testns2")
+
+		Expect(s.netdefChanges.Update(
+			nil,
+			NewNetDef("default", "net-attach1", NewCNIConfig("testCNI", "multi")))).To(BeTrue())
+		Expect(s.netdefChanges.GetPluginType(types.NamespacedName{Namespace: "default", Name: "net-attach1"})).To(Equal("multi"))
+
+		pod1 := NewFakePodWithNetAnnotation(
+			"testns1",
+			"testpod1",
+			"default/net-attach1",
+			NewFakeNetworkStatus("default", "net-attach1", "192.168.1.1", "10.1.1.1"),
+			nil)
+		AddPod(s, pod1)
+		podInfo1, err := s.podMap.GetPodInfo(pod1)
+		Expect(err).To(BeNil())
+
+		pod2 := NewFakePodWithNetAnnotation(
+			"testns2",
+			"testpod2",
+			"default/net-attach1",
+			NewFakeNetworkStatus("default", "net-attach1", "192.168.1.2", "10.1.1.2"),
+			nil)
+		AddPod(s, pod2)
+		buf.renderIngress(s, podInfo1, 0, ingressPolicies1, []string{"default/net-attach1"})
+
+		buf.FinalizeRules()
+		finalizedRules := []byte(
+			`*filter
+:MULTI-INGRESS - [0:0]
+:MULTI-EGRESS - [0:0]
+:MULTI-0-INGRESS - [0:0]
+:MULTI-0-INGRESS-0-PORTS - [0:0]
+:MULTI-0-INGRESS-0-FROM - [0:0]
+-A MULTI-INGRESS -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A MULTI-INGRESS -m comment --comment "policy:ingressPolicies1 net-attach-def:default/net-attach1" -i net1 -j MULTI-0-INGRESS
+-A MULTI-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
+-A MULTI-0-INGRESS -j MARK --set-xmark 0x0/0x30000
+-A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-PORTS
+-A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-FROM
+-A MULTI-0-INGRESS-0-PORTS -m comment --comment "no ingress ports, skipped" -j MARK --set-xmark 0x10000/0x10000
+-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.2 -j MARK --set-xmark 0x20000/0x20000
+-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.1 -j MARK --set-xmark 0x20000/0x20000
+COMMIT
+`)
+		Expect(buf.filterRules.String()).To(Equal(string(finalizedRules)))
 	})
 
 	It("egress rules ipblock", func() {
@@ -450,7 +624,7 @@ COMMIT
 							{
 								IPBlock: &multiv1beta1.IPBlock{
 									CIDR:   "10.1.1.1/24",
-									Except: []string{"10.1.1.1"},
+									Except: []string{"10.1.1.254"},
 								},
 							},
 						},
@@ -489,7 +663,7 @@ COMMIT
 		portRules := []byte("-A MULTI-0-EGRESS-0-PORTS -o net1 -m tcp -p tcp --dport 8888 -j MARK --set-xmark 0x10000/0x10000\n")
 		Expect(buf.egressPorts.Bytes()).To(Equal(portRules))
 
-		toRules := []byte("-A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.1 -j DROP\n-A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.1/24 -j MARK --set-xmark 0x20000/0x20000\n")
+		toRules := []byte("-A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.254 -j DROP\n-A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.1/24 -j MARK --set-xmark 0x20000/0x20000\n-A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.1 -j MARK --set-xmark 0x20000/0x20000\n")
 		Expect(buf.egressTo.Bytes()).To(Equal(toRules))
 
 		buf.FinalizeRules()
@@ -500,15 +674,16 @@ COMMIT
 :MULTI-0-EGRESS - [0:0]
 :MULTI-0-EGRESS-0-PORTS - [0:0]
 :MULTI-0-EGRESS-0-TO - [0:0]
+-A MULTI-EGRESS -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 -A MULTI-EGRESS -m comment --comment "policy:EgressPolicies1 net-attach-def:testns1/net-attach1" -o net1 -j MULTI-0-EGRESS
+-A MULTI-EGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-EGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-PORTS
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-TO
--A MULTI-0-EGRESS -m mark --mark 0x30000/0x30000 -j RETURN
--A MULTI-0-EGRESS -j DROP
 -A MULTI-0-EGRESS-0-PORTS -o net1 -m tcp -p tcp --dport 8888 -j MARK --set-xmark 0x10000/0x10000
--A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.1 -j DROP
+-A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.254 -j DROP
 -A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.1/24 -j MARK --set-xmark 0x20000/0x20000
+-A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.1 -j MARK --set-xmark 0x20000/0x20000
 COMMIT
 `)
 		Expect(buf.filterRules.Bytes()).To(Equal(finalizedRules))
@@ -587,7 +762,7 @@ COMMIT
 		portRules := []byte("-A MULTI-0-EGRESS-0-PORTS -o net1 -m tcp -p tcp --dport 8888 -j MARK --set-xmark 0x10000/0x10000\n")
 		Expect(buf.egressPorts.Bytes()).To(Equal(portRules))
 
-		toRules := []byte("-A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.2 -j MARK --set-xmark 0x20000/0x20000\n")
+		toRules := []byte("-A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.2 -j MARK --set-xmark 0x20000/0x20000\n-A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.1 -j MARK --set-xmark 0x20000/0x20000\n")
 		Expect(buf.egressTo.Bytes()).To(Equal(toRules))
 
 		buf.FinalizeRules()
@@ -598,19 +773,86 @@ COMMIT
 :MULTI-0-EGRESS - [0:0]
 :MULTI-0-EGRESS-0-PORTS - [0:0]
 :MULTI-0-EGRESS-0-TO - [0:0]
+-A MULTI-EGRESS -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 -A MULTI-EGRESS -m comment --comment "policy:EgressPolicies1 net-attach-def:testns1/net-attach1" -o net1 -j MULTI-0-EGRESS
+-A MULTI-EGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-EGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-PORTS
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-TO
--A MULTI-0-EGRESS -m mark --mark 0x30000/0x30000 -j RETURN
--A MULTI-0-EGRESS -j DROP
 -A MULTI-0-EGRESS-0-PORTS -o net1 -m tcp -p tcp --dport 8888 -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.2 -j MARK --set-xmark 0x20000/0x20000
+-A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.1 -j MARK --set-xmark 0x20000/0x20000
 COMMIT
 `)
 		Expect(buf.filterRules.Bytes()).To(Equal(finalizedRules))
 	})
 
+	It("default values", func() {
+		port := intstr.FromInt(8888)
+		policies1 := &multiv1beta1.MultiNetworkPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "policies1",
+				Namespace: "testns1",
+			},
+			Spec: multiv1beta1.MultiNetworkPolicySpec{
+				Ingress: []multiv1beta1.MultiNetworkPolicyIngressRule{
+					{
+						Ports: []multiv1beta1.MultiNetworkPolicyPort{
+							{
+								Port: &port,
+							},
+						},
+					},
+				},
+				Egress: []multiv1beta1.MultiNetworkPolicyEgressRule{
+					{
+						Ports: []multiv1beta1.MultiNetworkPolicyPort{
+							{
+								Port: &port,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		ipt := fakeiptables.NewFake()
+		Expect(ipt).NotTo(BeNil())
+		buf := newIptableBuffer()
+		Expect(buf).NotTo(BeNil())
+		buf.Init(ipt)
+
+		s := NewFakeServer("samplehost")
+		Expect(s).NotTo(BeNil())
+
+		AddNamespace(s, "testns1")
+
+		Expect(s.netdefChanges.Update(
+			nil,
+			NewNetDef("testns1", "net-attach1", NewCNIConfig("testCNI", "multi"))),
+		).To(BeTrue())
+		Expect(s.netdefChanges.GetPluginType(types.NamespacedName{Namespace: "testns1", Name: "net-attach1"})).
+			To(Equal("multi"))
+
+		pod1 := NewFakePodWithNetAnnotation(
+			"testns1",
+			"testpod1",
+			"net-attach1",
+			NewFakeNetworkStatus("testns1", "net-attach1", "192.168.1.1", "10.1.1.1"),
+			nil)
+		AddPod(s, pod1)
+		podInfo1, err := s.podMap.GetPodInfo(pod1)
+		Expect(err).To(BeNil())
+
+		buf.renderIngress(s, podInfo1, 0, policies1, []string{"testns1/net-attach1"})
+		buf.renderEgress(s, podInfo1, 0, policies1, []string{"testns1/net-attach1"})
+
+		portRules := []byte("-A MULTI-0-INGRESS-0-PORTS -i net1 -m tcp -p tcp --dport 8888 -j MARK --set-xmark 0x10000/0x10000\n")
+		Expect(buf.ingressPorts.Bytes()).To(Equal(portRules))
+
+		portRules = []byte("-A MULTI-0-EGRESS-0-PORTS -o net1 -m tcp -p tcp --dport 8888 -j MARK --set-xmark 0x10000/0x10000\n")
+		Expect(buf.egressPorts.Bytes()).To(Equal(portRules))
+	})
 })
 
 var _ = Describe("policyrules testing - invalid case", func() {
@@ -716,11 +958,10 @@ var _ = Describe("policyrules testing - invalid case", func() {
 :MULTI-0-INGRESS - [0:0]
 :MULTI-0-INGRESS-0-PORTS - [0:0]
 :MULTI-0-INGRESS-0-FROM - [0:0]
+-A MULTI-INGRESS -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 -A MULTI-0-INGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-PORTS
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-FROM
--A MULTI-0-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
--A MULTI-0-INGRESS -j DROP
 -A MULTI-0-INGRESS-0-PORTS -m comment --comment "no ingress ports, skipped" -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-INGRESS-0-FROM -m comment --comment "no ingress from, skipped" -j MARK --set-xmark 0x20000/0x20000
 COMMIT
@@ -806,11 +1047,10 @@ COMMIT
 :MULTI-0-INGRESS - [0:0]
 :MULTI-0-INGRESS-0-PORTS - [0:0]
 :MULTI-0-INGRESS-0-FROM - [0:0]
+-A MULTI-INGRESS -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 -A MULTI-0-INGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-PORTS
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-FROM
--A MULTI-0-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
--A MULTI-0-INGRESS -j DROP
 -A MULTI-0-INGRESS-0-PORTS -m comment --comment "no ingress ports, skipped" -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-INGRESS-0-FROM -m comment --comment "no ingress from, skipped" -j MARK --set-xmark 0x20000/0x20000
 COMMIT
@@ -883,11 +1123,10 @@ COMMIT
 :MULTI-0-EGRESS - [0:0]
 :MULTI-0-EGRESS-0-PORTS - [0:0]
 :MULTI-0-EGRESS-0-TO - [0:0]
+-A MULTI-EGRESS -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 -A MULTI-0-EGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-PORTS
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-TO
--A MULTI-0-EGRESS -m mark --mark 0x30000/0x30000 -j RETURN
--A MULTI-0-EGRESS -j DROP
 -A MULTI-0-EGRESS-0-PORTS -m comment --comment "no egress ports, skipped" -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-EGRESS-0-TO -m comment --comment "no egress to, skipped" -j MARK --set-xmark 0x20000/0x20000
 COMMIT
@@ -973,11 +1212,10 @@ COMMIT
 :MULTI-0-EGRESS - [0:0]
 :MULTI-0-EGRESS-0-PORTS - [0:0]
 :MULTI-0-EGRESS-0-TO - [0:0]
+-A MULTI-EGRESS -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 -A MULTI-0-EGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-PORTS
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-TO
--A MULTI-0-EGRESS -m mark --mark 0x30000/0x30000 -j RETURN
--A MULTI-0-EGRESS -j DROP
 -A MULTI-0-EGRESS-0-PORTS -m comment --comment "no egress ports, skipped" -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-EGRESS-0-TO -m comment --comment "no egress to, skipped" -j MARK --set-xmark 0x20000/0x20000
 COMMIT

@@ -24,8 +24,7 @@ import (
 
 	"github.com/k8snetworkplumbingwg/multi-networkpolicy-iptables/pkg/controllers"
 	multiv1beta1 "github.com/k8snetworkplumbingwg/multi-networkpolicy/pkg/apis/k8s.cni.cncf.io/v1beta1"
-
-	//v1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog"
@@ -144,11 +143,6 @@ func (ipt *iptableBuffer) SaveRules(path string) error {
 }
 
 func (ipt *iptableBuffer) SyncRules(iptables utiliptables.Interface) error {
-	/*
-		fmt.Fprintf(os.Stderr, "========= filterRules\n")
-		fmt.Fprintf(os.Stderr, "%s", ipt.filterRules.String())
-		fmt.Fprintf(os.Stderr, "=========\n")
-	*/
 	return iptables.RestoreAll(ipt.filterRules.Bytes(), utiliptables.NoFlushTables, utiliptables.RestoreCounters)
 }
 
@@ -171,12 +165,17 @@ func (ipt *iptableBuffer) renderIngress(s *Server, podInfo *controllers.PodInfo,
 	ipt.CreateFilterChain(chainName)
 
 	ingresses := policy.Spec.Ingress
+	if idx == 0 {
+		writeLine(ipt.policyIndex, "-A", ingressChain, "-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT")
+	}
 	for _, podIntf := range podInfo.Interfaces {
 		if podIntf.CheckPolicyNetwork(policyNetworks) {
 			comment := fmt.Sprintf("\"policy:%s net-attach-def:%s\"", policy.Name, podIntf.NetattachName)
 			writeLine(ipt.policyIndex, "-A", ingressChain,
 				"-m", "comment", "--comment", comment, "-i", podIntf.InterfaceName,
 				"-j", chainName)
+			writeLine(ipt.policyIndex, "-A", ingressChain,
+				"-m", "mark", "--mark", "0x30000/0x30000", "-j", "RETURN")
 		}
 	}
 
@@ -185,10 +184,7 @@ func (ipt *iptableBuffer) renderIngress(s *Server, podInfo *controllers.PodInfo,
 			"-j", "MARK", "--set-xmark 0x0/0x30000")
 		ipt.renderIngressPorts(s, podInfo, idx, n, ingress.Ports, policyNetworks)
 		ipt.renderIngressFrom(s, podInfo, idx, n, ingress.From, policyNetworks)
-		writeLine(ipt.policyIndex, "-A", chainName,
-			"-m", "mark", "--mark", "0x30000/0x30000", "-j", "RETURN")
 	}
-	writeLine(ipt.policyIndex, "-A", chainName, "-j", "DROP")
 }
 
 func (ipt *iptableBuffer) renderIngressPorts(s *Server, podInfo *controllers.PodInfo, pIndex, iIndex int, ports []multiv1beta1.MultiNetworkPolicyPort, policyNetworks []string) {
@@ -200,7 +196,8 @@ func (ipt *iptableBuffer) renderIngressPorts(s *Server, podInfo *controllers.Pod
 
 	validPorts := 0
 	for _, port := range ports {
-		proto := strings.ToLower(string(*port.Protocol))
+		proto := renderProtocol(port.Protocol)
+
 		for _, podIntf := range podInfo.Interfaces {
 			if !podIntf.CheckPolicyNetwork(policyNetworks) {
 				continue
@@ -232,7 +229,7 @@ func (ipt *iptableBuffer) renderIngressFrom(s *Server, podInfo *controllers.PodI
 	s.podMap.Update(s.podChanges)
 	validPeers := 0
 	for _, peer := range from {
-		if peer.PodSelector != nil {
+		if peer.PodSelector != nil || peer.NamespaceSelector != nil {
 			podSelectorMap, err := metav1.LabelSelectorAsMap(peer.PodSelector)
 			if err != nil {
 				klog.Errorf("pod selector: %v", err)
@@ -285,6 +282,12 @@ func (ipt *iptableBuffer) renderIngressFrom(s *Server, podInfo *controllers.PodI
 								"-j", "MARK", "--set-xmark", "0x20000/0x20000")
 							validPeers++
 						}
+						// ingress should accept reverse path
+						for _, ip := range podIntf.IPs {
+							writeLine(ipt.ingressFrom, "-A", chainName,
+								"-i", podIntf.InterfaceName, "-s", ip,
+								"-j", "MARK", "--set-xmark", "0x20000/0x20000")
+						}
 					}
 				}
 			}
@@ -308,6 +311,16 @@ func (ipt *iptableBuffer) renderIngressFrom(s *Server, podInfo *controllers.PodI
 					"-j", "MARK", "--set-xmark", "0x20000/0x20000")
 				validPeers++
 			}
+			for _, podIntf := range podInfo.Interfaces {
+				if !podIntf.CheckPolicyNetwork(policyNetworks) {
+					continue
+				}
+				for _, ip := range podIntf.IPs {
+					writeLine(ipt.ingressFrom, "-A", chainName,
+						"-i", podIntf.InterfaceName, "-s", ip,
+						"-j", "MARK", "--set-xmark", "0x20000/0x20000")
+				}
+			}
 		} else {
 			klog.Errorf("unknown rule")
 		}
@@ -327,21 +340,24 @@ func (ipt *iptableBuffer) renderEgress(s *Server, podInfo *controllers.PodInfo, 
 	ipt.CreateFilterChain(chainName)
 
 	egresses := policy.Spec.Egress
+	if idx == 0 {
+		writeLine(ipt.policyIndex, "-A", egressChain, "-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT")
+	}
 	for _, podIntf := range podInfo.Interfaces {
 		if podIntf.CheckPolicyNetwork(policyNetworks) {
 			comment := fmt.Sprintf("\"policy:%s net-attach-def:%s\"", policy.Name, podIntf.NetattachName)
 			writeLine(ipt.policyIndex, "-A", egressChain,
 				"-m", "comment", "--comment", comment, "-o", podIntf.InterfaceName,
 				"-j", chainName)
+			writeLine(ipt.policyIndex, "-A", egressChain,
+				"-m", "mark", "--mark", "0x30000/0x30000", "-j", "RETURN")
 		}
 	}
 	for n, egress := range egresses {
 		writeLine(ipt.policyIndex, "-A", chainName, "-j", "MARK", "--set-xmark 0x0/0x30000")
 		ipt.renderEgressPorts(s, podInfo, idx, n, egress.Ports, policyNetworks)
 		ipt.renderEgressTo(s, podInfo, idx, n, egress.To, policyNetworks)
-		writeLine(ipt.policyIndex, "-A", chainName, "-m", "mark", "--mark", "0x30000/0x30000", "-j", "RETURN")
 	}
-	writeLine(ipt.policyIndex, "-A", chainName, "-j", "DROP")
 }
 
 func (ipt *iptableBuffer) renderEgressPorts(s *Server, podInfo *controllers.PodInfo, pIndex, iIndex int, ports []multiv1beta1.MultiNetworkPolicyPort, policyNetworks []string) {
@@ -353,7 +369,8 @@ func (ipt *iptableBuffer) renderEgressPorts(s *Server, podInfo *controllers.PodI
 
 	validPorts := 0
 	for _, port := range ports {
-		proto := strings.ToLower(string(*port.Protocol))
+		proto := renderProtocol(port.Protocol)
+
 		for _, podIntf := range podInfo.Interfaces {
 			if !podIntf.CheckPolicyNetwork(policyNetworks) {
 				continue
@@ -385,7 +402,7 @@ func (ipt *iptableBuffer) renderEgressTo(s *Server, podInfo *controllers.PodInfo
 	s.podMap.Update(s.podChanges)
 	validPeers := 0
 	for _, peer := range to {
-		if peer.PodSelector != nil {
+		if peer.PodSelector != nil || peer.NamespaceSelector != nil {
 			podSelectorMap, err := metav1.LabelSelectorAsMap(peer.PodSelector)
 			if err != nil {
 				klog.Errorf("pod selector: %v", err)
@@ -439,6 +456,12 @@ func (ipt *iptableBuffer) renderEgressTo(s *Server, podInfo *controllers.PodInfo
 								"-j", "MARK", "--set-xmark", "0x20000/0x20000")
 							validPeers++
 						}
+						// egress should accept reverse path
+						for _, ip := range podIntf.IPs {
+							writeLine(ipt.egressTo, "-A", chainName,
+								"-o", podIntf.InterfaceName, "-d", ip,
+								"-j", "MARK", "--set-xmark", "0x20000/0x20000")
+						}
 					}
 				}
 			}
@@ -461,6 +484,17 @@ func (ipt *iptableBuffer) renderEgressTo(s *Server, podInfo *controllers.PodInfo
 					"-o", podIntf.InterfaceName, "-d", peer.IPBlock.CIDR,
 					"-j", "MARK", "--set-xmark", "0x20000/0x20000")
 				validPeers++
+			}
+			// egress should accept reverse path
+			for _, podIntf := range podInfo.Interfaces {
+				if !podIntf.CheckPolicyNetwork(policyNetworks) {
+					continue
+				}
+				for _, ip := range podIntf.IPs {
+					writeLine(ipt.egressTo, "-A", chainName,
+						"-o", podIntf.InterfaceName, "-d", ip,
+						"-j", "MARK", "--set-xmark", "0x20000/0x20000")
+				}
 			}
 		} else {
 			klog.Errorf("unknown rule")
@@ -492,4 +526,13 @@ func writeLine(buf *bytes.Buffer, words ...string) {
 func writeBytesLine(buf *bytes.Buffer, bytes []byte) {
 	buf.Write(bytes)
 	buf.WriteByte('\n')
+}
+
+func renderProtocol(proto *v1.Protocol) string {
+	p := v1.ProtocolTCP
+	if proto != nil {
+		p = *proto
+	}
+
+	return strings.ToLower(string(p))
 }
