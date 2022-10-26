@@ -92,7 +92,8 @@ type Server struct {
 	podLister    corelisters.PodLister
 	policyLister multilisterv1beta1.MultiNetworkPolicyLister
 
-	syncRunner *async.BoundedFrequencyRunner
+	syncRunner       *async.BoundedFrequencyRunner
+	syncRunnerStopCh chan struct{}
 }
 
 // RunPodConfig ...
@@ -109,7 +110,7 @@ func (s *Server) RunPodConfig() {
 }
 
 // Run ...
-func (s *Server) Run(hostname string) error {
+func (s *Server) Run(hostname string, stopCh chan struct{}) {
 	if s.Broadcaster != nil {
 		s.Broadcaster.StartRecordingToSink(
 			&v1core.EventSinkImpl{Interface: s.Client.CoreV1().Events("")})
@@ -141,7 +142,15 @@ func (s *Server) Run(hostname string) error {
 
 	s.birthCry()
 
-	return nil
+	// Wait for stop signal
+	<-stopCh
+
+	// Stop the sync runner loop
+	s.syncRunnerStopCh <- struct{}{}
+
+	// Delete all iptables by running the `syncMultiPolicy` with no MultiNetworkPolicies
+	s.policyMap = nil
+	s.syncMultiPolicy()
 }
 
 func (s *Server) setInitialized(value bool) {
@@ -163,7 +172,7 @@ func (s *Server) birthCry() {
 
 // SyncLoop ...
 func (s *Server) SyncLoop() {
-	s.syncRunner.Loop(wait.NeverStop)
+	s.syncRunner.Loop(s.syncRunnerStopCh)
 }
 
 // NewServer ...
@@ -262,8 +271,8 @@ func NewServer(o *Options) (*Server, error) {
 		Recorder:            recorder,
 		ConfigSyncPeriod:    15 * time.Minute,
 		NodeRef:             nodeRef,
-		ip4Tables:           utiliptables.New(exec.New(), utiliptables.ProtocolIpv4),
-		ip6Tables:           utiliptables.New(exec.New(), utiliptables.ProtocolIpv6),
+		ip4Tables:           utiliptables.New(exec.New(), utiliptables.ProtocolIPv4),
+		ip6Tables:           utiliptables.New(exec.New(), utiliptables.ProtocolIPv6),
 
 		policyChanges: policyChanges,
 		podChanges:    podChanges,
@@ -275,7 +284,7 @@ func NewServer(o *Options) (*Server, error) {
 	}
 	server.syncRunner = async.NewBoundedFrequencyRunner(
 		"sync-runner", server.syncMultiPolicy, minSyncPeriod, syncPeriod, burstSyncs)
-
+	server.syncRunnerStopCh = make(chan struct{})
 	return server, nil
 }
 
@@ -327,7 +336,7 @@ func (s *Server) OnPodSynced() {
 	s.setInitialized(s.podSynced)
 	s.mu.Unlock()
 
-	s.syncMultiPolicy()
+	s.Sync()
 }
 
 // OnPolicyAdd ...
