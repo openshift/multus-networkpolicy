@@ -1,4 +1,5 @@
 # multi-networkpolicy-iptables
+[![build](https://github.com/k8snetworkplumbingwg/multi-networkpolicy-iptables/actions/workflows/build.yml/badge.svg)](https://github.com/k8snetworkplumbingwg/multi-networkpolicy-iptables/actions/workflows/build.yml)[![test](https://github.com/k8snetworkplumbingwg/multi-networkpolicy-iptables/actions/workflows/test.yml/badge.svg)](https://github.com/k8snetworkplumbingwg/multi-networkpolicy-iptables/actions/workflows/test.yml)
 
 [multi-networkpolicy](https://github.com/k8snetworkplumbingwg/multi-networkpolicy) implementation with iptables
 
@@ -34,6 +35,19 @@ serviceaccount/multi-networkpolicy created
 daemonset.apps/multi-networkpolicy-ds-amd64 created
 ```
 
+## Requirements
+
+This project leverages `iptables` and `ip6tables` commands to do its work. Hence, `ip_tables` and `ip6_tables` kernel modules
+need to be loaded on the container host:
+
+```
+# modprobe ip_tables ip6_tables
+```
+
+## Configurations
+
+See [Configurations](docs/configurations.md).
+
 ## Demo
 
 (TBD)
@@ -50,4 +64,4 @@ MultiNetworkPolicy creates DaemonSet and it runs `multi-networkpolicy-iptables` 
 
 ## Contact Us
 
-For any questions about multi-networkpolicy-iptables, feel free to ask a question in #k8s-npwg-discussion in the [Intel-Corp Slack](https://intel-corp.herokuapp.com/), or open up a GitHub issue.
+For any questions about Multus CNI, feel free to ask a question in #general in the [NPWG Slack](https://npwg-team.slack.com/), or open up a GitHub issue. Request an invite to NPWG slack [here](https://intel-corp.herokuapp.com/).
