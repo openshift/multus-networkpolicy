@@ -1043,6 +1043,7 @@ COMMIT
 -A MULTI-0-INGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-PORTS
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-FROM
+-A MULTI-0-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-INGRESS-0-PORTS -i net1 -m tcp -p tcp --dport 8888 -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.254 -j DROP
 -A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.1/24 -j MARK --set-xmark 0x20000/0x20000
@@ -1147,6 +1148,7 @@ COMMIT
 -A MULTI-0-INGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-PORTS
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-FROM
+-A MULTI-0-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-INGRESS-0-PORTS -i net1 -m tcp -p tcp --dport 8888 -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.2 -j MARK --set-xmark 0x20000/0x20000
 -A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.1 -j MARK --set-xmark 0x20000/0x20000
@@ -1234,6 +1236,7 @@ COMMIT
 -A MULTI-0-INGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-PORTS
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-FROM
+-A MULTI-0-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-INGRESS-0-PORTS -m comment --comment "no ingress ports, skipped" -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.2 -j MARK --set-xmark 0x20000/0x20000
 -A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.1 -j MARK --set-xmark 0x20000/0x20000
@@ -1319,6 +1322,7 @@ COMMIT
 -A MULTI-0-INGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-PORTS
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-FROM
+-A MULTI-0-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-INGRESS-0-PORTS -m comment --comment "no ingress ports, skipped" -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.2 -j MARK --set-xmark 0x20000/0x20000
 -A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.1 -j MARK --set-xmark 0x20000/0x20000
@@ -1410,6 +1414,7 @@ COMMIT
 -A MULTI-0-EGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-PORTS
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-TO
+-A MULTI-0-EGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-EGRESS-0-PORTS -o net1 -m tcp -p tcp --dport 8888 -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.254 -j DROP
 -A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.1/24 -j MARK --set-xmark 0x20000/0x20000
@@ -1514,6 +1519,7 @@ COMMIT
 -A MULTI-0-EGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-PORTS
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-TO
+-A MULTI-0-EGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-EGRESS-0-PORTS -o net1 -m tcp -p tcp --dport 8888 -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.2 -j MARK --set-xmark 0x20000/0x20000
 -A MULTI-0-EGRESS-0-TO -o net1 -d 10.1.1.1 -j MARK --set-xmark 0x20000/0x20000
@@ -1589,6 +1595,102 @@ COMMIT
 		portRules = `-A MULTI-0-EGRESS-0-PORTS -o net1 -m tcp -p tcp --dport 8888 -j MARK --set-xmark 0x10000/0x10000
 `
 		Expect(buf.egressPorts.String()).To(Equal(portRules))
+	})
+
+	It("policyType should be implicitly inferred", func() {
+
+		policy1 := &multiv1beta1.MultiNetworkPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "ingressPolicies1",
+				Namespace: "testns1",
+				Annotations: map[string]string{
+					PolicyNetworkAnnotation: "net-attach1",
+				},
+			},
+			Spec: multiv1beta1.MultiNetworkPolicySpec{
+				PodSelector: metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"role": "targetpod",
+					},
+				},
+				Ingress: []multiv1beta1.MultiNetworkPolicyIngressRule{{
+					From: []multiv1beta1.MultiNetworkPolicyPeer{{
+						PodSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"foobar": "enabled",
+							},
+						},
+					}},
+				}},
+			},
+		}
+
+		s := NewFakeServer("samplehost")
+		Expect(s).NotTo(BeNil())
+
+		AddNamespace(s, "testns1")
+
+		Expect(
+			s.netdefChanges.Update(nil, NewNetDef("testns1", "net-attach1", NewCNIConfig("testCNI", "multi"))),
+		).To(BeTrue())
+
+		pod1 := NewFakePodWithNetAnnotation(
+			"testns1",
+			"testpod1",
+			"net-attach1",
+			NewFakeNetworkStatus("testns1", "net-attach1", "192.168.1.1", "10.1.1.1"),
+			map[string]string{
+				"role": "targetpod",
+			})
+		pod1.Spec.NodeName = "samplehost"
+
+		AddPod(s, pod1)
+		podInfo1, err := s.podMap.GetPodInfo(pod1)
+		Expect(err).NotTo(HaveOccurred())
+
+		pod2 := NewFakePodWithNetAnnotation(
+			"testns1",
+			"testpod2",
+			"net-attach1",
+			NewFakeNetworkStatus("testns1", "net-attach1", "192.168.1.2", "10.1.1.2"),
+			map[string]string{
+				"foobar": "enabled",
+			})
+		AddPod(s, pod2)
+
+		Expect(
+			s.policyChanges.Update(nil, policy1),
+		).To(BeTrue())
+		s.policyMap.Update(s.policyChanges)
+
+		result := fakeiptables.NewFake()
+		s.ip4Tables = result
+
+		s.generatePolicyRulesForPod(pod1, podInfo1)
+
+		Expect(string(result.Lines)).To(Equal(`*filter
+:MULTI-INGRESS - [0:0]
+:MULTI-INGRESS-COMMON - [0:0]
+:MULTI-EGRESS - [0:0]
+:MULTI-EGRESS-COMMON - [0:0]
+:MULTI-0-INGRESS - [0:0]
+:MULTI-0-INGRESS-0-PORTS - [0:0]
+:MULTI-0-INGRESS-0-FROM - [0:0]
+-A MULTI-INGRESS-COMMON -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A MULTI-INGRESS -j MULTI-INGRESS-COMMON
+-A MULTI-INGRESS -m comment --comment "policy:ingressPolicies1 net-attach-def:testns1/net-attach1" -i net1 -j MULTI-0-INGRESS
+-A MULTI-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
+-A MULTI-0-INGRESS -j MARK --set-xmark 0x0/0x30000
+-A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-PORTS
+-A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-FROM
+-A MULTI-0-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
+-A MULTI-INGRESS -j DROP
+-A MULTI-0-INGRESS-0-PORTS -m comment --comment "no ingress ports, skipped" -j MARK --set-xmark 0x10000/0x10000
+-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.2 -j MARK --set-xmark 0x20000/0x20000
+-A MULTI-0-INGRESS-0-FROM -i net1 -s 10.1.1.1 -j MARK --set-xmark 0x20000/0x20000
+COMMIT
+`))
+
 	})
 
 	Context("IPv6", func() {
@@ -1676,11 +1778,13 @@ COMMIT
 -A MULTI-0-INGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-PORTS
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-FROM
+-A MULTI-0-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-EGRESS -m comment --comment "policy:ingressPolicies1 net-attach-def:testns1/net-attach1" -o net1 -j MULTI-0-EGRESS
 -A MULTI-EGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-EGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-PORTS
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-TO
+-A MULTI-0-EGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-INGRESS-0-PORTS -m comment --comment "no ingress ports, skipped" -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-INGRESS-0-FROM -m comment --comment "no ingress from, skipped" -j MARK --set-xmark 0x20000/0x20000
 -A MULTI-0-EGRESS-0-PORTS -m comment --comment "no egress ports, skipped" -j MARK --set-xmark 0x10000/0x10000
@@ -1777,11 +1881,13 @@ COMMIT
 -A MULTI-0-INGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-PORTS
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-FROM
+-A MULTI-0-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-EGRESS -m comment --comment "policy:ingressPolicies1 net-attach-def:testns1/net-attach1" -o net1 -j MULTI-0-EGRESS
 -A MULTI-EGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-EGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-PORTS
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-TO
+-A MULTI-0-EGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-INGRESS-0-PORTS -m comment --comment "no ingress ports, skipped" -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-INGRESS-0-FROM -i net1 -s 2001:db8:a::12 -j MARK --set-xmark 0x20000/0x20000
 -A MULTI-0-INGRESS-0-FROM -i net1 -s 2001:db8:a::11 -j MARK --set-xmark 0x20000/0x20000
@@ -1915,6 +2021,7 @@ COMMIT
 -A MULTI-0-INGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-PORTS
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-FROM
+-A MULTI-0-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-INGRESS-0-PORTS -m comment --comment "no ingress ports, skipped" -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-INGRESS-0-FROM -m comment --comment "no ingress from, skipped" -j MARK --set-xmark 0x20000/0x20000
 COMMIT
@@ -2005,6 +2112,7 @@ COMMIT
 -A MULTI-0-INGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-PORTS
 -A MULTI-0-INGRESS -j MULTI-0-INGRESS-0-FROM
+-A MULTI-0-INGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-INGRESS-0-PORTS -m comment --comment "no ingress ports, skipped" -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-INGRESS-0-FROM -m comment --comment "no ingress from, skipped" -j MARK --set-xmark 0x20000/0x20000
 COMMIT
@@ -2082,6 +2190,7 @@ COMMIT
 -A MULTI-0-EGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-PORTS
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-TO
+-A MULTI-0-EGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-EGRESS-0-PORTS -m comment --comment "no egress ports, skipped" -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-EGRESS-0-TO -m comment --comment "no egress to, skipped" -j MARK --set-xmark 0x20000/0x20000
 COMMIT
@@ -2172,6 +2281,7 @@ COMMIT
 -A MULTI-0-EGRESS -j MARK --set-xmark 0x0/0x30000
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-PORTS
 -A MULTI-0-EGRESS -j MULTI-0-EGRESS-0-TO
+-A MULTI-0-EGRESS -m mark --mark 0x30000/0x30000 -j RETURN
 -A MULTI-0-EGRESS-0-PORTS -m comment --comment "no egress ports, skipped" -j MARK --set-xmark 0x10000/0x10000
 -A MULTI-0-EGRESS-0-TO -m comment --comment "no egress to, skipped" -j MARK --set-xmark 0x20000/0x20000
 COMMIT
