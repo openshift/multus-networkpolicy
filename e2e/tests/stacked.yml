@@ -90,7 +90,7 @@ metadata:
     k8s.v1.cni.cncf.io/networks: default/macvlan1-stacked
   labels:
     app: test-stacked
-    app: pod-d
+    name: pod-client-c
 spec:
   containers:
   - name: macvlan-worker1
