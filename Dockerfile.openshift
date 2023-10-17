@@ -4,7 +4,7 @@ FROM registry.ci.openshift.org/ocp/builder:rhel-8-golang-1.20-openshift-4.15 AS 
 # Add everything
 ADD . /usr/src/multi-networkpolicy-iptables
 WORKDIR /usr/src/multi-networkpolicy-iptables
-RUN go build ./cmd/multi-networkpolicy-iptables/
+RUN CGO_ENABLED=0 go build ./cmd/multi-networkpolicy-iptables/
 
 FROM registry.ci.openshift.org/ocp/4.15:base
 RUN dnf install -y iptables
