@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/containernetworking/cni v0.8.1
-	github.com/containernetworking/plugins v0.8.5
+	github.com/containernetworking/plugins v0.8.6
 	github.com/k8snetworkplumbingwg/multi-networkpolicy v0.0.0-20200903074708-7b3ce95ae804
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v0.0.0-20200528071255-22c819bc6e7e
 	github.com/onsi/ginkgo v1.14.0
@@ -40,11 +40,11 @@ require (
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/nxadm/tail v1.4.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	golang.org/x/net v0.5.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/oauth2 v0.4.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/term v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/term v0.13.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
@@ -53,7 +53,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.0 // indirect
 	k8s.io/apiserver v0.22.8 // indirect
 	k8s.io/component-base v0.22.8 // indirect
 	k8s.io/klog/v2 v2.9.0 // indirect
@@ -64,7 +64,7 @@ require (
 
 replace (
 	github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.2
-	golang.org/x/net => golang.org/x/net v0.7.0
+	golang.org/x/net => golang.org/x/net v0.17.0
 	golang.org/x/text => golang.org/x/text v0.3.8
 	k8s.io/api => k8s.io/api v0.22.8
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.22.8
