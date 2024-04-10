@@ -59,7 +59,6 @@ MultiNetworkPolicy creates DaemonSet and it runs `multi-networkpolicy-iptables` 
 ## TODO
 
 * Bugfixing
-* IPv6 support
 * (TBD)
 
 ## Contact Us
