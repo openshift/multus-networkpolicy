@@ -1,0 +1,13 @@
+# References:
+# https://docs.snyk.io/scan-applications/snyk-code/using-snyk-code-from-the-cli/excluding-directories-and-files-from-the-snyk-code-cli-test
+# https://docs.snyk.io/snyk-cli/commands/ignore
+exclude:
+  global:
+    - "**/*_test.go"
+    - vendor/github.com/google/uuid
+    - vendor/github.com/Microsoft/go-winio/pkg/guid
+    - vendor/golang.org/x/tools/cmd/stringer
+    - vendor/golang.org/x/tools/internal/pkgbits
+    - vendor/k8s.io/client-go/util/cert
+    - vendor/k8s.io/klog
+    - vendor/k8s.io/klog/v2
