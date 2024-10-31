@@ -17,5 +17,3 @@ LABEL io.k8s.display-name="Multus NetworkPolicy" \
       maintainer="Doug Smith <dosmith@redhat.com>"
 
 ENTRYPOINT ["multi-networkpolicy-iptables"]
-
-
