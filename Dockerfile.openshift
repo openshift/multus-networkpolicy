@@ -1,12 +1,12 @@
 # This dockerfile is specific to building Multus for OpenShift
-FROM registry.ci.openshift.org/ocp/builder:rhel-9-golang-1.23-openshift-4.19 AS build
+FROM registry.ci.openshift.org/ocp/builder:rhel-9-golang-1.24-openshift-4.20 AS build
 
 # Add everything
 ADD . /usr/src/multi-networkpolicy-iptables
 WORKDIR /usr/src/multi-networkpolicy-iptables
 RUN CGO_ENABLED=0 go build ./cmd/multi-networkpolicy-iptables/
 
-FROM registry.ci.openshift.org/ocp/4.19:base-rhel9
+FROM registry.ci.openshift.org/ocp/4.20:base-rhel9
 LABEL org.opencontainers.image.source https://github.com/k8snetworkplumbingwg/multi-networkpolicy-iptables
 RUN dnf install -y iptables
 COPY --from=build /usr/src/multi-networkpolicy-iptables/multi-networkpolicy-iptables /usr/bin
