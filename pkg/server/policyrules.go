@@ -271,6 +271,7 @@ func (ipt *iptableBuffer) renderIngressPorts(_ *Server, podInfo *controllers.Pod
 				"-i", podIntf.InterfaceName,
 				"-m", proto, "-p", proto, dport,
 				"-j", "MARK", "--set-xmark", "0x10000/0x10000")
+
 			validPorts++
 		}
 	}
