@@ -1,0 +1,63 @@
+
+version: "2"
+linters:
+  enable:
+    - contextcheck
+    - durationcheck
+    - forbidigo
+    - ginkgolinter
+    - gocritic
+    - misspell
+    - nonamedreturns
+    - predeclared
+    - revive
+    - unconvert
+    - unparam
+    - wastedassign
+  disable:
+    - errcheck
+  settings:
+    staticcheck:
+      checks:
+        - all
+        - '-QF1008'  # nested struct reference
+        - '-ST1005'  # capitalized error strings
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - revive
+          - staticcheck
+        text: use ALL_CAPS in Go names; use CamelCase
+      - linters:
+          - revive
+        text: ' and that stutters;'
+      - path: (.+)_test\.go
+        text: 'dot-imports: should not use dot imports'
+      - path: (.+)_test\.go
+        text: "ginkgo-linter: wrong comparison assertion. Consider using (.+)BeZero(.+)"
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofumpt
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/mlguerrero12/multi-network-policy-nftables)
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

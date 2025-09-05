@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.0.2
+          args: -v
+
+  build:
+    needs: lint
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        goos: [ linux ]
+        goarch: [amd64, arm64, ppc64le]
+    runs-on: ${{ matrix.os }}
+    env:
+      GO111MODULE: on
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build test for ${{ matrix.goarch }}
+        env:
+          GOARCH: ${{ matrix.goarch }}
+          GOOS: ${{ matrix.goos }}
+        run: GOARCH="${TARGET}" go build ./cmd/main.go
+
+  test-unit:
+    name: Run tests on Linux amd64
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests
+        run: sudo make test
+
+  test-e2e:
+    name: Run e2e tests
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install bats
+        run: sudo apt install bats
+      - name: Setup registry
+        run: docker run -d --restart=always -p "5000:5000" --name "kind-registry" registry:2
+
+      - name: Get tools
+        working-directory: ./e2e
+        run: ./get_tools.sh
+
+      - name: Setup cluster
+        working-directory: ./e2e
+        run: ./setup_cluster.sh
+
+      - name: "Test: simple"
+        working-directory: ./e2e
+        run: |
+          export TERM=dumb
+          # enable ip6_tables
+          sudo modprobe ip6_tables
+          
+          ./run_all_tests.sh
+
+      - name: Upload logs
+        uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: kind-logs-e2e
+          path: ./e2e/artifacts/
