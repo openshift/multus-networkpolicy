@@ -26,38 +26,24 @@ import (
 )
 
 var (
-	cfg       *rest.Config
-	k8sClient client.Client
-	testEnv   *envtest.Environment
-	ctx       context.Context
-	cancel    context.CancelFunc
-
-	// Global variables to track NFTables operations
-	syncPolicyCreateCalled = 0
-	syncPolicyDeleteCalled = 0
-	lastSyncedPolicy       *datastore.Policy
-	lastSyncOperation      nftables.SyncOperation
+	cfg               *rest.Config
+	k8sClient         client.Client
+	testEnv           *envtest.Environment
+	ctx               context.Context
+	cancel            context.CancelFunc
+	datastoreInstance *datastore.Datastore
+	mockNFT           *MockNFT
 )
 
-var _ nftables.SyncInterface = &nftables.NFTables{}
-
-// MockNFTables is a mock implementation of SyncInterface for testing
-type MockNFTables struct {
-	nftables.SyncInterface
+// MockNFT is a mock implementation of the NFT interface for testing
+type MockNFT struct {
+	SyncPolicyFunc func(ctx context.Context, policy *datastore.Policy, operation nftables.SyncOperation, logger logr.Logger) error
 }
 
-func (m *MockNFTables) SyncPolicy(_ context.Context, policy *datastore.Policy, operation nftables.SyncOperation, _ logr.Logger) error {
-	// Track the operation and policy
-	lastSyncedPolicy = policy
-	lastSyncOperation = operation
-
-	switch operation {
-	case nftables.SyncOperationCreate:
-		syncPolicyCreateCalled++
-	case nftables.SyncOperationDelete:
-		syncPolicyDeleteCalled++
+func (m *MockNFT) SyncPolicy(ctx context.Context, policy *datastore.Policy, operation nftables.SyncOperation, logger logr.Logger) error {
+	if m.SyncPolicyFunc != nil {
+		return m.SyncPolicyFunc(ctx, policy, operation, logger)
 	}
-
 	return nil
 }
 
@@ -104,16 +90,23 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	datastoreInstance := &datastore.Datastore{
+	datastoreInstance = &datastore.Datastore{
 		Policies: make(map[types.NamespacedName]*datastore.Policy),
+	}
+
+	mockNFT = &MockNFT{
+		SyncPolicyFunc: func(_ context.Context, _ *datastore.Policy, _ nftables.SyncOperation, _ logr.Logger) error {
+			// Mock successful sync by default
+			return nil
+		},
 	}
 
 	err = (&controller.MultiNetworkReconciler{
 		Client:       k8sManager.GetClient(),
 		Scheme:       k8sManager.GetScheme(),
 		DS:           datastoreInstance,
-		NFT:          &MockNFTables{},               // Use our mock instead
-		ValidPlugins: []string{"macvlan", "ipvlan"}, // Add valid plugins for testing
+		NFT:          mockNFT,
+		ValidPlugins: []string{"macvlan", "ipvlan"},
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
