@@ -8,7 +8,7 @@ import (
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/knftables"
 
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/utils"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/utils"
 )
 
 // cleanUpPolicy cleans up the policy

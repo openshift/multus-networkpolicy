@@ -54,7 +54,7 @@ formatters:
       sections:
         - standard
         - default
-        - prefix(github.com/mlguerrero12/multi-network-policy-nftables)
+        - prefix(github.com/k8snetworkplumbingwg/multi-network-policy-nftables)
   exclusions:
     generated: lax
     paths:

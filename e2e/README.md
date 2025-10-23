@@ -6,7 +6,7 @@
 This requires [Bats](https://github.com/bats-core/bats-core) for test runner. Please install bats (e.g. dnf, apt and so on).
 
 ```
-$ git clone https://github.com/mlguerrero12/multi-networkpolicy-nftables
+$ git clone https://github.com/k8snetworkplumbingwg/multi-networkpolicy-nftables
 $ cd multi-networkpolicy-nftables/e2e
 $ ./get_tools.sh
 $ ./setup_cluster.sh

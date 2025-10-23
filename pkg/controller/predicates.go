@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/datastore"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/datastore"
 )
 
 // MultiNetworkPolicyPredicate is a predicate that checks if a policy is eligible for reconciliation

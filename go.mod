@@ -1,4 +1,4 @@
-module github.com/mlguerrero12/multi-network-policy-nftables
+module github.com/k8snetworkplumbingwg/multi-network-policy-nftables
 
 go 1.24.2
 

@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/utils"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/utils"
 )
 
 // namespaceEnqueue returns a function that enqueues policies affected by a namespace event

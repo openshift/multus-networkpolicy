@@ -14,8 +14,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/knftables"
 
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/datastore"
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/utils"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/datastore"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/utils"
 )
 
 // enforcePolicy applies the NFTables policy for a pod

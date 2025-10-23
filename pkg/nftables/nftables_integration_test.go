@@ -19,8 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/knftables"
 
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/datastore"
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/utils"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/datastore"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/utils"
 )
 
 var _ = Describe("NFTables Simple Integration Tests", func() {

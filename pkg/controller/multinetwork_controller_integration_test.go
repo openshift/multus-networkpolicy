@@ -14,8 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/datastore"
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/nftables"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/datastore"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/nftables"
 )
 
 type SyncPolicyCall struct {

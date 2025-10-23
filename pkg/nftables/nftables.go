@@ -15,8 +15,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/cri"
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/datastore"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/cri"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/datastore"
 )
 
 const (

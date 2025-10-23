@@ -23,8 +23,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/datastore"
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/nftables"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/datastore"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/nftables"
 )
 
 // MultiNetworkReconciler reconciles a MultiNetworkPolicy object

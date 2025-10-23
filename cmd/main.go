@@ -15,11 +15,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/controller"
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/cri"
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/datastore"
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/nftables"
-	"github.com/mlguerrero12/multi-network-policy-nftables/pkg/utils"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/controller"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/cri"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/datastore"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/nftables"
+	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/utils"
 )
 
 var (
