@@ -1,0 +1,149 @@
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: multi-networkpolicy-nftables
+rules:
+  - apiGroups: ["k8s.cni.cncf.io"]
+    resources:
+      - '*'
+    verbs:
+      - '*'
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/status
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - networkpolicies
+    verbs:
+      - get
+      - list
+      - watch
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: multi-networkpolicy-nftables
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: multi-networkpolicy-nftables
+subjects:
+  - kind: ServiceAccount
+    name: multi-networkpolicy-nftables
+    namespace: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: multi-networkpolicy-nftables
+  namespace: default
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: multi-networkpolicy-custom-v4-rules
+  namespace: kube-system
+  labels:
+    tier: node
+    app: multi-networkpolicy
+data:
+  custom-v4-rules.txt: |
+    # Custom IPv4 rules for e2e testing
+    # Allow traffic on port 9999 for testing custom rules
+    tcp dport 9999 accept
+    # Allow traffic from specific IP range
+    ip saddr 192.168.100.0/24 accept
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: multi-networkpolicy-custom-v6-rules
+  namespace: kube-system
+  labels:
+    tier: node
+    app: multi-networkpolicy
+data:
+  custom-v6-rules.txt: |
+    # Custom IPv6 rules for e2e testing
+    # Allow traffic on port 9999 for testing custom rules
+    tcp dport 9999 accept
+    # Allow traffic from specific IPv6 range
+    ip6 saddr 2001:db8:100::/64 accept
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: multi-networkpolicy-nftables
+  namespace: default
+  labels:
+    app: multi-networkpolicy-nftables
+spec:
+  selector:
+    matchLabels:
+      name: multi-networkpolicy-nftables
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        name: multi-networkpolicy-nftables
+    spec:
+      hostNetwork: true
+      serviceAccountName: multi-networkpolicy-nftables
+      containers:
+        - name: multi-networkpolicy-nftables
+          image: localhost:5000/multus-networkpolicy-nftables:e2e
+          imagePullPolicy: Always
+          command:
+            - /multi-networkpolicy-nftables
+          args:
+            - "--zap-log-level=2"
+            - "--container-runtime-endpoint=/run/crio/crio.sock"
+            - "--network-plugins=macvlan,ipvlan"
+            - "--host-prefix=/host"
+            # accept all icmp/icmpv6 types for e2e testing
+            - "--accept-icmp"
+            - "--accept-icmpv6"
+            # custom rules for e2e testing
+            - "--custom-v4-ingress-rule-file=/etc/multi-networkpolicy/rules/custom-v4-rules.txt"
+            - "--custom-v4-egress-rule-file=/etc/multi-networkpolicy/rules/custom-v4-rules.txt"
+            - "--custom-v6-ingress-rule-file=/etc/multi-networkpolicy/rules/custom-v6-rules.txt"
+            - "--custom-v6-egress-rule-file=/etc/multi-networkpolicy/rules/custom-v6-rules.txt"
+            # enable debug logging for e2e
+            - "--zap-log-level=2"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "80Mi"
+            limits:
+              cpu: "100m"
+              memory: "150Mi"
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN", "NET_ADMIN"]
+          volumeMounts:
+            - name: host
+              mountPath: /host
+            - name: multi-networkpolicy-custom-rules
+              mountPath: /etc/multi-networkpolicy/rules
+              readOnly: true
+      volumes:
+        - name: host
+          hostPath:
+            path: /
+        - name: multi-networkpolicy-custom-rules
+          projected:
+            sources:
+              - configMap:
+                  name: multi-networkpolicy-custom-v4-rules
+              - configMap:
+                  name: multi-networkpolicy-custom-v6-rules

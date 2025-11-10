@@ -1,0 +1,113 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-custom-rules
+  labels:
+    app: test-custom-rules
+---
+apiVersion: k8s.cni.cncf.io/v1
+kind: NetworkAttachmentDefinition
+metadata:
+  name: macvlan1-custom-rules
+  namespace: test-custom-rules
+spec:
+  config: |
+    {
+      "cniVersion": "0.3.1",
+      "type": "macvlan",
+      "master": "eth0",
+      "mode": "bridge",
+      "ipam": {
+        "type": "host-local",
+        "subnet": "192.168.200.0/24",
+        "rangeStart": "192.168.200.10",
+        "rangeEnd": "192.168.200.50",
+        "routes": [
+          { "dst": "0.0.0.0/0" }
+        ],
+        "gateway": "192.168.200.1"
+      }
+    }
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-server
+  namespace: test-custom-rules
+  labels:
+    app: test-custom-rules
+    name: pod-server
+  annotations:
+    k8s.v1.cni.cncf.io/networks: macvlan1-custom-rules
+spec:
+  containers:
+  - name: web-server
+    image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+    command: ["sh", "-c", "nc -klp 80 & nc -klp 8080 & nc -klp 9999 & wait"]
+    securityContext:
+      privileged: true
+    ports:
+    - name: http
+      containerPort: 80
+    - name: http-alt
+      containerPort: 8080
+    - name: custom
+      containerPort: 9999
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-client-a
+  namespace: test-custom-rules
+  labels:
+    app: test-custom-rules
+    name: pod-client-a
+    role: allowed-client
+  annotations:
+    k8s.v1.cni.cncf.io/networks: macvlan1-custom-rules
+spec:
+  containers:
+  - name: client
+    image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+    command: ["sh", "-c", "sleep 3600"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-client-b
+  namespace: test-custom-rules
+  labels:
+    app: test-custom-rules
+    name: pod-client-b
+    role: blocked-client
+  annotations:
+    k8s.v1.cni.cncf.io/networks: macvlan1-custom-rules
+spec:
+  containers:
+  - name: client
+    image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+    command: ["sh", "-c", "sleep 3600"]
+---
+# Regular policy that only allows client-a on port 8080
+apiVersion: k8s.cni.cncf.io/v1beta1
+kind: MultiNetworkPolicy
+metadata:
+  name: custom-rules-policy
+  namespace: test-custom-rules
+  annotations:
+    k8s.v1.cni.cncf.io/policy-for: macvlan1-custom-rules
+spec:
+  podSelector:
+    matchLabels:
+      name: pod-server
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          role: allowed-client
+    ports:
+    - port: 8080
+      protocol: TCP
