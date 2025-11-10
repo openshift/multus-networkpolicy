@@ -2,14 +2,14 @@
 FROM registry.ci.openshift.org/ocp/builder:rhel-9-golang-1.24-openshift-4.21 AS build
 
 # Add everything
-ADD . /usr/src/multi-networkpolicy-iptables
-WORKDIR /usr/src/multi-networkpolicy-iptables
-RUN CGO_ENABLED=0 go build ./cmd/multi-networkpolicy-iptables/
+ADD . /usr/src/multus-networkpolicy
+WORKDIR /usr/src/multus-networkpolicy
+RUN CGO_ENABLED=0 go build -a -o multi-networkpolicy-nftables ./cmd/
 
 FROM registry.ci.openshift.org/ocp/4.21:base-rhel9
-LABEL org.opencontainers.image.source https://github.com/k8snetworkplumbingwg/multi-networkpolicy-iptables
-RUN dnf install -y iptables
-COPY --from=build /usr/src/multi-networkpolicy-iptables/multi-networkpolicy-iptables /usr/bin
+LABEL org.opencontainers.image.source https://github.com/openshift/multus-networkpolicy
+RUN dnf install -y nftables && dnf clean all
+COPY --from=build /usr/src/multus-networkpolicy/multi-networkpolicy-nftables /usr/bin
 WORKDIR /usr/bin
 
 LABEL io.k8s.display-name="Multus NetworkPolicy" \
@@ -17,4 +17,4 @@ LABEL io.k8s.display-name="Multus NetworkPolicy" \
       io.openshift.tags="openshift" \
       maintainer="Doug Smith <dosmith@redhat.com>"
 
-ENTRYPOINT ["multi-networkpolicy-iptables"]
+ENTRYPOINT ["multi-networkpolicy-nftables"]
