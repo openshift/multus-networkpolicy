@@ -1,7 +1,16 @@
 reviewers:
-  - mlguerrero12
+  - dougbtv
+  - zshi-redhat
+  - fepan
+  - s1061123
+  - bpickard22
+  - pliurh
   - zeeke
 approvers:
-  - mlguerrero12
+  - dougbtv
+  - zshi-redhat
+  - fepan
+  - bpickard22
+  - pliurh
   - zeeke
 component: "Networking"
