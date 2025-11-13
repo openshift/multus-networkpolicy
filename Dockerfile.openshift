@@ -17,4 +17,7 @@ LABEL io.k8s.display-name="Multus NetworkPolicy" \
       io.openshift.tags="openshift" \
       maintainer="Doug Smith <dosmith@redhat.com>"
 
+# TODO: compatibility layer with the original multus-networkpolicy-iptables image. Remove this once the ClsuterNetworkOperator is updated to use the nftables implementation. 
+RUN ln -s /usr/bin/multi-networkpolicy-nftables /usr/bin/multi-networkpolicy-iptables
+
 ENTRYPOINT ["multi-networkpolicy-nftables"]

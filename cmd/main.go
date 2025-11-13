@@ -63,6 +63,10 @@ func run() error {
 	flag.StringVar(&customIPv6IngressRuleFile, "custom-v6-ingress-rule-file", "", "custom rule file for IPv6 ingress")
 	flag.StringVar(&customIPv6EgressRuleFile, "custom-v6-egress-rule-file", "", "custom rule file for IPv6 egress")
 
+	// TODO: compatibility layer with the multus-networkpolicy-iptables image. Remove this once the ClsuterNetworkOperator is updated to use the nftables implementation.
+	var podIptables string
+	flag.StringVar(&podIptables, "pod-iptables", "", "compatibility layer")
+
 	opts := zap.Options{
 		Development: true,
 	}
@@ -100,6 +104,9 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("unable to get custom nftables rules: %w", err)
 	}
+
+	// TODO: compatibility layer with the multus-networkpolicy-iptables image. Remove this once the ClsuterNetworkOperator is updated to use the nftables implementation.
+	commonRules = &nftables.CommonRules{}
 
 	// Set ICMP acceptance rules
 	commonRules.AcceptICMP = acceptICMP
