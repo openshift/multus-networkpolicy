@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	netdefutils "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/utils"
@@ -17,6 +18,8 @@ func setupIndexes(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Pod{}, nftables.PodHostnameIndex, func(obj client.Object) []string {
 		pod := obj.(*corev1.Pod)
 
+		fmt.Printf("DEBUG: PodHostnameIndex %s/%s hostname[%s]", pod.Namespace, pod.Name, pod.Spec.NodeName)
+
 		if pod.Spec.NodeName == "" {
 			return nil
 		}
@@ -29,6 +32,8 @@ func setupIndexes(mgr ctrl.Manager) error {
 	// Pod Status Phase index
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Pod{}, nftables.PodStatusIndex, func(obj client.Object) []string {
 		pod := obj.(*corev1.Pod)
+		fmt.Printf("DEBUG: PodStatusIndex %s/%s phase[%s]", pod.Namespace, pod.Name, pod.Status.Phase)
+
 		return []string{string(pod.Status.Phase)}
 	}); err != nil {
 		return err
@@ -37,6 +42,8 @@ func setupIndexes(mgr ctrl.Manager) error {
 	// Pod Host Network index
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Pod{}, nftables.PodHostNetworkIndex, func(obj client.Object) []string {
 		pod := obj.(*corev1.Pod)
+		fmt.Printf("DEBUG: PodHostNetworkIndex %s/%s hostnetwork[%t]", pod.Namespace, pod.Name, pod.Spec.HostNetwork)
+
 		return []string{strconv.FormatBool(pod.Spec.HostNetwork)}
 	}); err != nil {
 		return err
@@ -51,6 +58,9 @@ func setupIndexes(mgr ctrl.Manager) error {
 		}
 
 		networks, err := netdefutils.ParsePodNetworkAnnotation(pod)
+
+		fmt.Printf("DEBUG: PodHasNetworkAnnotationIndex %s/%s nets[%v] err[%s]", pod.Namespace, pod.Name, networks, err)
+
 		if err != nil {
 			return []string{"false"}
 		}
