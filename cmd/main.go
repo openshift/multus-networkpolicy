@@ -81,6 +81,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("unable to get hostname: %w", err)
 	}
+	setupLog.Info("Handling pods for", "node", hostname)
 
 	if criEndpoint == "" {
 		return fmt.Errorf("container-runtime-endpoint must be set")
@@ -110,6 +111,8 @@ func run() error {
 	// Set ICMP acceptance rules
 	commonRules.AcceptICMP = acceptICMP
 	commonRules.AcceptICMPv6 = acceptICMPv6
+
+	setupLog.Info("Common rules applied to all pods affected ny MultinetPolicies", "rules", commonRules)
 
 	ctx := ctrl.SetupSignalHandler()
 
