@@ -20,6 +20,20 @@ setup() {
 	sleep 5
 }
 
+@test "check generated nftables rules" {
+	# wait for sync
+	sleep 5
+
+  run has_nftables_table "bond-testing" "pod-a"
+  [ "$status" -eq  "0" ]
+
+  run has_nftables_table "bond-testing" "pod-b"
+  [ "$status" -eq  "1" ]
+
+  run has_nftables_table "bond-testing" "pod-c"
+  [ "$status" -eq  "1" ]
+}
+
 @test "bond-testing check pod-b -> pod-a" {
 	run kubectl -n bond-testing exec pod-b -- sh -c "echo x | nc -w 1 ${pod_a_net1} 5555"
 	[ "$status" -eq  "0" ]

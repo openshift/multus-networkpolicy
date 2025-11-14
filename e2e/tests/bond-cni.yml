@@ -4,7 +4,7 @@ kind: NetworkAttachmentDefinition
 metadata:
   namespace: default
   name: macvlan-nad
-spec: 
+spec:
   config: '{
             "cniVersion": "0.3.1",
             "name": "macvlan1",
@@ -16,7 +16,7 @@ kind: NetworkAttachmentDefinition
 metadata:
   namespace: default
   name: bond-nad
-spec: 
+spec:
   config: '{
             "cniVersion": "0.3.1",
             "name": "test-nad",
@@ -41,7 +41,7 @@ spec:
 apiVersion: v1
 kind: Namespace
 metadata:
-    name: bond-testing
+  name: bond-testing
 ---
 # Pods
 apiVersion: v1
@@ -59,11 +59,11 @@ metadata:
     name: pod-a
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-klp", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-klp", "5555"]
+      securityContext:
+        privileged: true
 ---
 apiVersion: v1
 kind: Pod
@@ -80,11 +80,11 @@ metadata:
     name: pod-b
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-klp", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-klp", "5555"]
+      securityContext:
+        privileged: true
 ---
 apiVersion: v1
 kind: Pod
@@ -101,11 +101,11 @@ metadata:
     name: pod-c
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-klp", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-klp", "5555"]
+      securityContext:
+        privileged: true
 ---
 # MultiNetworkPolicies
 apiVersion: k8s.cni.cncf.io/v1beta1
@@ -120,12 +120,12 @@ spec:
     matchLabels:
       name: pod-a
   ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          name: pod-b
+    - from:
+        - podSelector:
+            matchLabels:
+              name: pod-b
   egress:
-  - to:
-    - podSelector:
-        matchLabels:
-          name: pod-c
+    - to:
+        - podSelector:
+            matchLabels:
+              name: pod-c

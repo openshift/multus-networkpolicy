@@ -4,7 +4,7 @@ set -o errexit
 E2E="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 export PATH=${PATH}:${E2E}/bin
 OCI_BIN="${OCI_BIN:-docker}"
-IMAGE="localhost:5000/multus-networkpolicy-iptables:e2e"
+IMAGE="localhost:5000/multus-networkpolicy-nftables:e2e"
 
 $OCI_BIN build -t ${IMAGE} ${E2E}/..
 kind load docker-image ${IMAGE}

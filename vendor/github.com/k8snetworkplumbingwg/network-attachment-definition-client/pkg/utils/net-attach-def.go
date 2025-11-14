@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Kubernetes Network Plumbing Working Group
+// Copyright (c) 2021 Kubernetes Network Plumbing Working Group
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,11 +18,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"regexp"
 	"strings"
 
 	cnitypes "github.com/containernetworking/cni/pkg/types"
-	"github.com/containernetworking/cni/pkg/types/current"
+	cni100 "github.com/containernetworking/cni/pkg/types/100"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
@@ -65,40 +66,40 @@ func SetNetworkStatus(client kubernetes.Interface, pod *corev1.Pod, statuses []v
 		}
 	}
 
-	_, err := setPodNetworkStatus(client, pod, fmt.Sprintf("[%s]", strings.Join(networkStatus, ",")))
+	err := setPodNetworkStatus(client, pod, fmt.Sprintf("[%s]", strings.Join(networkStatus, ",")))
 	if err != nil {
 		return fmt.Errorf("SetNetworkStatus: failed to update the pod %s in out of cluster comm: %v", pod.Name, err)
 	}
 	return nil
 }
 
-func setPodNetworkStatus(client kubernetes.Interface, pod *corev1.Pod, networkstatus string) (*corev1.Pod, error) {
+func setPodNetworkStatus(client kubernetes.Interface, pod *corev1.Pod, networkstatus string) error {
 	if len(pod.Annotations) == 0 {
 		pod.Annotations = make(map[string]string)
 	}
 
 	coreClient := client.CoreV1()
-
-	pod.Annotations[v1.NetworkStatusAnnot] = networkstatus
-	pod.Annotations[v1.OldNetworkStatusAnnot] = networkstatus
-	pod = pod.DeepCopy()
 	var err error
+	name := pod.Name
+	namespace := pod.Namespace
 
-	if resultErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+	resultErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		pod, err = coreClient.Pods(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
-			// Re-get the pod unless it's the first attempt to update
-			pod, err = coreClient.Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
-			if err != nil {
-				return err
-			}
+			return err
 		}
 
-		pod, err = coreClient.Pods(pod.Namespace).UpdateStatus(context.TODO(), pod, metav1.UpdateOptions{})
+		if len(pod.Annotations) == 0 {
+			pod.Annotations = make(map[string]string)
+		}
+		pod.Annotations[v1.NetworkStatusAnnot] = networkstatus
+		_, err = coreClient.Pods(namespace).UpdateStatus(context.TODO(), pod, metav1.UpdateOptions{})
 		return err
-	}); resultErr != nil {
-		return nil, fmt.Errorf("status update failed for pod %s/%s: %v", pod.Namespace, pod.Name, resultErr)
+	})
+	if resultErr != nil {
+		return fmt.Errorf("status update failed for pod %s/%s: %v", pod.Namespace, pod.Name, resultErr)
 	}
-	return pod, nil
+	return nil
 }
 
 // GetNetworkStatus returns pod's network status
@@ -121,16 +122,127 @@ func GetNetworkStatus(pod *corev1.Pod) ([]v1.NetworkStatus, error) {
 	return netStatuses, err
 }
 
+// gatewayInterfaceIndex determines the index of the first interface that has a gateway
+func gatewayInterfaceIndex(ips []*cni100.IPConfig) int {
+	for _, ipConfig := range ips {
+		if ipConfig.Gateway != nil && ipConfig.Interface != nil {
+			return *ipConfig.Interface
+		}
+	}
+	return -1
+}
+
+// CreateNetworkStatuses creates an array of NetworkStatus from CNI result
+// Not to be confused with CreateNetworkStatus (singular)
+// This is the preferred method and picks up when CNI ADD results contain multiple container interfaces
+func CreateNetworkStatuses(r cnitypes.Result, networkName string, defaultNetwork bool, dev *v1.DeviceInfo) ([]*v1.NetworkStatus, error) {
+	var networkStatuses []*v1.NetworkStatus
+	// indexMap is from original CNI result index to networkStatuses index
+	indexMap := make(map[int]int)
+
+	// Convert whatever the IPAM result was into the current Result type
+	result, err := cni100.NewResultFromResult(r)
+	if err != nil {
+		return nil, fmt.Errorf("error converting the type.Result to cni100.Result: %v", err)
+	}
+
+	if len(result.Interfaces) == 1 {
+		networkStatus, err := CreateNetworkStatus(r, networkName, defaultNetwork, dev)
+		return []*v1.NetworkStatus{networkStatus}, err
+	}
+
+	// Discover default routes upfront and reuse them if necessary.
+	var useDefaultRoute []string
+	for _, route := range result.Routes {
+		if isDefaultRoute(route) {
+			useDefaultRoute = append(useDefaultRoute, route.GW.String())
+		}
+	}
+
+	// Same for DNS
+	v1dns := convertDNS(result.DNS)
+
+	// Check for a gateway-associated interface, we'll use this later if we did to mark as the default.
+	gwInterfaceIdx := -1
+	if defaultNetwork {
+		gwInterfaceIdx = gatewayInterfaceIndex(result.IPs)
+	}
+
+	// Initialize NetworkStatus for each container interface (e.g. with sandbox present)
+	indexOfFoundPodInterface := 0
+	foundFirstSandboxIface := false
+	didSetDefault := false
+	for i, iface := range result.Interfaces {
+		if iface.Sandbox != "" {
+			isDefault := false
+
+			// If there's a gateway listed for this interface index found in the ips, we mark that interface as default
+			// notably, we use the first one we find.
+			if defaultNetwork && i == gwInterfaceIdx && !didSetDefault {
+				isDefault = true
+				didSetDefault = true
+			}
+
+			// Otherwise, if we didn't find it, we use the first sandbox interface.
+			if defaultNetwork && gwInterfaceIdx == -1 && !foundFirstSandboxIface {
+				isDefault = true
+				foundFirstSandboxIface = true
+			}
+
+			ns := &v1.NetworkStatus{
+				Name:       networkName,
+				Default:    isDefault,
+				Interface:  iface.Name,
+				Mac:        iface.Mac,
+				Mtu:        iface.Mtu,
+				IPs:        []string{},
+				Gateway:    useDefaultRoute,
+				DeviceInfo: dev,
+				DNS:        *v1dns,
+			}
+			networkStatuses = append(networkStatuses, ns)
+			// Map original index to the new slice index
+			indexMap[i] = indexOfFoundPodInterface
+			indexOfFoundPodInterface++
+		}
+	}
+
+	var defaultNetworkStatus *v1.NetworkStatus
+	if len(networkStatuses) > 0 {
+		// Set the default network status to the last network status.
+		defaultNetworkStatus = networkStatuses[len(networkStatuses)-1]
+	}
+
+	// Map IPs to network interface based on index
+	for _, ipConfig := range result.IPs {
+		if ipConfig.Interface != nil {
+			originalIndex := *ipConfig.Interface
+			if newIndex, ok := indexMap[originalIndex]; ok {
+				ns := networkStatuses[newIndex]
+				ns.IPs = append(ns.IPs, ipConfig.Address.IP.String())
+			}
+		} else {
+			// If the IPs don't specify the interface assign the IP to the default network status. This keeps the behaviour
+			// consistent with previous multus versions.
+			if defaultNetworkStatus != nil {
+				defaultNetworkStatus.IPs = append(defaultNetworkStatus.IPs, ipConfig.Address.IP.String())
+			}
+		}
+	}
+
+	return networkStatuses, nil
+}
+
 // CreateNetworkStatus create NetworkStatus from CNI result
-func CreateNetworkStatus(r cnitypes.Result, networkName string, defaultNetwork bool) (*v1.NetworkStatus, error) {
+func CreateNetworkStatus(r cnitypes.Result, networkName string, defaultNetwork bool, dev *v1.DeviceInfo) (*v1.NetworkStatus, error) {
 	netStatus := &v1.NetworkStatus{}
 	netStatus.Name = networkName
 	netStatus.Default = defaultNetwork
 
 	// Convert whatever the IPAM result was into the current Result type
-	result, err := current.NewResultFromResult(r)
+	result, err := cni100.NewResultFromResult(r)
 	if err != nil {
-		return netStatus, fmt.Errorf("error convert the type.Result to current.Result: %v", err)
+		return netStatus, fmt.Errorf("error convert the type.Result to cni100.Result: %v", err)
 	}
 
 	for _, ifs := range result.Interfaces {
@@ -138,23 +250,34 @@ func CreateNetworkStatus(r cnitypes.Result, networkName string, defaultNetwork b
 		if ifs.Sandbox != "" {
 			netStatus.Interface = ifs.Name
 			netStatus.Mac = ifs.Mac
+			netStatus.Mtu = ifs.Mtu
 		}
 	}
 
 	for _, ipconfig := range result.IPs {
-		if ipconfig.Version == "4" && ipconfig.Address.IP.To4() != nil {
-			netStatus.IPs = append(netStatus.IPs, ipconfig.Address.IP.String())
-		}
+		netStatus.IPs = append(netStatus.IPs, ipconfig.Address.IP.String())
+	}
 
-		if ipconfig.Version == "6" && ipconfig.Address.IP.To16() != nil {
-			netStatus.IPs = append(netStatus.IPs, ipconfig.Address.IP.String())
+	for _, route := range result.Routes {
+		if isDefaultRoute(route) {
+			netStatus.Gateway = append(netStatus.Gateway, route.GW.String())
 		}
 	}
 
 	v1dns := convertDNS(result.DNS)
 	netStatus.DNS = *v1dns
 
+	if dev != nil {
+		netStatus.DeviceInfo = dev
+	}
+
 	return netStatus, nil
+}
+
+func isDefaultRoute(route *cnitypes.Route) bool {
+	return route.Dst.IP == nil && route.Dst.Mask == nil ||
+		route.Dst.IP.Equal(net.IPv4zero) ||
+		route.Dst.IP.Equal(net.IPv6zero)
 }
 
 // ParsePodNetworkAnnotation parses Pod annotation for net-attach-def and get NetworkSelectionElement
