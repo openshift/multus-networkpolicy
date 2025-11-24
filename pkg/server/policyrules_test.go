@@ -19,7 +19,6 @@ package server
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -221,7 +220,7 @@ var _ = Describe("policyrules testing", func() {
 
 	BeforeEach(func() {
 		var err error
-		tmpDir, err = ioutil.TempDir("", "multi-networkpolicy-iptables")
+		tmpDir, err = os.MkdirTemp("", "multi-networkpolicy-iptables")
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -525,7 +524,7 @@ COMMIT
 
 	It("ingress common - custom v4 rules", func() {
 		tmpRuleFile := filepath.Join(tmpDir, "testInputRules.txt")
-		ioutil.WriteFile(tmpRuleFile, []byte(
+		os.WriteFile(tmpRuleFile, []byte(
 			`# comment: this accepts DHCP packet
 -m udp -p udp --sport bootps --dport bootpc -j ACCEPT
 `), 0600)
@@ -579,7 +578,7 @@ COMMIT
 
 	It("ingress common - custom v6 rules", func() {
 		tmpRuleFile := filepath.Join(tmpDir, "testInputRules.txt")
-		ioutil.WriteFile(tmpRuleFile, []byte(
+		os.WriteFile(tmpRuleFile, []byte(
 			`# comment: this accepts DHCPv6 packets from link-local address
 -m udp -p udp --dport 546 -d fe80::/64 -j ACCEPT
 `), 0600)
@@ -865,7 +864,7 @@ COMMIT
 
 	It("egress common - custom v4 rules", func() {
 		tmpRuleFile := filepath.Join(tmpDir, "testInputRules.txt")
-		ioutil.WriteFile(tmpRuleFile, []byte(
+		os.WriteFile(tmpRuleFile, []byte(
 			`# comment: this rules accepts DHCP packets
 -m udp -p udp --sport bootc --dport bootps -j ACCEPT
 `), 0600)
@@ -919,7 +918,7 @@ COMMIT
 
 	It("egress common - custom v6 rules", func() {
 		tmpRuleFile := filepath.Join(tmpDir, "testInputRules.txt")
-		ioutil.WriteFile(tmpRuleFile, []byte(
+		os.WriteFile(tmpRuleFile, []byte(
 			`# comment: this rules accepts DHCPv6 packet to dhcp relay agents/servers
 -m udp -p udp --dport 547 -d ff02::1:2 -j ACCEPT
 `), 0600)
