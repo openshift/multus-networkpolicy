@@ -1098,12 +1098,6 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 
 	// initialize help at the last point to allow for user overriding
 	c.InitDefaultHelpCmd()
-	// initialize completion at the last point to allow for user overriding
-	c.InitDefaultCompletionCmd()
-
-	// Now that all commands have been created, let's make sure all groups
-	// are properly created also
-	c.checkCommandGroups()
 
 	args := c.args
 
