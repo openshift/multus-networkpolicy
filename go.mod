@@ -15,7 +15,7 @@ require (
 	google.golang.org/grpc v1.77.0
 	k8s.io/api v0.34.2
 	k8s.io/apimachinery v0.34.2
-	k8s.io/client-go v0.34.1
+	k8s.io/client-go v0.34.2
 	k8s.io/component-helpers v0.0.0-00010101000000-000000000000
 	k8s.io/cri-api v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/controller-runtime v0.22.4
