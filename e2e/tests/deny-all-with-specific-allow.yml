@@ -1,0 +1,144 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-deny-all
+  labels:
+    app: test-deny-all
+---
+apiVersion: k8s.cni.cncf.io/v1
+kind: NetworkAttachmentDefinition
+metadata:
+  name: macvlan1-deny-all
+  namespace: default
+spec:
+  config: |
+    {
+      "cniVersion": "0.3.1",
+      "type": "macvlan",
+      "master": "eth0",
+      "mode": "bridge",
+      "ipam": {
+        "type": "host-local",
+        "subnet": "192.168.210.0/24",
+        "rangeStart": "192.168.210.10",
+        "rangeEnd": "192.168.210.50",
+        "routes": [
+          { "dst": "0.0.0.0/0" }
+        ],
+        "gateway": "192.168.210.1"
+      }
+    }
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-server
+  namespace: test-deny-all
+  labels:
+    app: test-deny-all
+    name: pod-server
+  annotations:
+    k8s.v1.cni.cncf.io/networks: default/macvlan1-deny-all
+spec:
+  containers:
+  - name: web-server
+    image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+    command: ["sh", "-c", "nc -klp 80 & nc -klp 8080 & wait"]
+    securityContext:
+      privileged: true
+    ports:
+    - name: http
+      containerPort: 80
+    - name: http-alt
+      containerPort: 8080
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-client-a
+  namespace: test-deny-all
+  labels:
+    app: test-deny-all
+    name: pod-client-a
+    role: allowed-client
+  annotations:
+    k8s.v1.cni.cncf.io/networks: default/macvlan1-deny-all
+spec:
+  containers:
+  - name: client
+    image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+    command: ["sh", "-c", "sleep 3600"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-client-b
+  namespace: test-deny-all
+  labels:
+    app: test-deny-all
+    name: pod-client-b
+    role: blocked-client
+  annotations:
+    k8s.v1.cni.cncf.io/networks: default/macvlan1-deny-all
+spec:
+  containers:
+  - name: client
+    image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+    command: ["sh", "-c", "sleep 3600"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-client-c
+  namespace: test-deny-all
+  labels:
+    app: test-deny-all
+    name: pod-client-c
+    role: other-client
+  annotations:
+    k8s.v1.cni.cncf.io/networks: default/macvlan1-deny-all
+spec:
+  containers:
+  - name: client
+    image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+    command: ["sh", "-c", "sleep 3600"]
+---
+# Deny-all policy - blocks all traffic
+apiVersion: k8s.cni.cncf.io/v1beta1
+kind: MultiNetworkPolicy
+metadata:
+  name: deny-all-policy
+  namespace: test-deny-all
+  annotations:
+    k8s.v1.cni.cncf.io/policy-for: default/macvlan1-deny-all
+spec:
+  podSelector:
+    matchLabels:
+      name: pod-server
+  policyTypes:
+  - Ingress
+  ingress: []
+---
+# Specific allow policy - allows client-a on port 80
+apiVersion: k8s.cni.cncf.io/v1beta1
+kind: MultiNetworkPolicy
+metadata:
+  name: specific-allow-policy
+  namespace: test-deny-all
+  annotations:
+    k8s.v1.cni.cncf.io/policy-for: default/macvlan1-deny-all
+spec:
+  podSelector:
+    matchLabels:
+      name: pod-server
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          role: allowed-client
+    ports:
+    - port: 80
+      protocol: TCP

@@ -19,3 +19,13 @@ get_net1_ip6() {
 		echo "unknown ip $1"
 	fi
 }
+
+# Check if nftables multi_networkpolicy table exists in a pod
+has_nftables_table() {
+	if [ "$#" == "2" ]; then
+		kubectl exec -n $1 "$2" -- sh -c "nft list table inet multi_networkpolicy >/dev/null 2>&1"
+		return $?
+	else
+		return 1
+	fi
+}

@@ -18,6 +18,18 @@ setup() {
 	sleep 3
 }
 
+@test "check generated nftables rules" {
+	# wait for sync
+	sleep 5
+
+  run has_nftables_table "test-port-range" "pod-a"
+  [ "$status" -eq  "0" ]
+
+  run has_nftables_table "test-port-range" "pod-b"
+  [ "$status" -eq  "1" ]
+}
+
+
 @test "test-port-range check pod-a -> pod-b 5555 OK" {
 	# nc should succeed from client-a to server by policy
 	run kubectl -n test-port-range exec pod-a -- sh -c "echo x | nc -w 1 ${pod_b_net1} 5555"

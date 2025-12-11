@@ -4,7 +4,7 @@ kind: NetworkAttachmentDefinition
 metadata:
   namespace: default
   name: macvlan1-stacked
-spec: 
+spec:
   config: '{
             "cniVersion": "0.3.1",
             "name": "macvlan1-stacked",
@@ -24,7 +24,7 @@ spec:
 apiVersion: v1
 kind: Namespace
 metadata:
-    name: test-stacked
+  name: test-stacked
 ---
 # Pods
 apiVersion: v1
@@ -39,11 +39,11 @@ metadata:
     name: pod-server
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-kl", "0.0.0.0", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-kl", "0.0.0.0", "5555"]
+      securityContext:
+        privileged: true
 ---
 apiVersion: v1
 kind: Pod
@@ -57,11 +57,11 @@ metadata:
     name: pod-client-a
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-kl", "0.0.0.0", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-kl", "0.0.0.0", "5555"]
+      securityContext:
+        privileged: true
 ---
 apiVersion: v1
 kind: Pod
@@ -75,11 +75,11 @@ metadata:
     name: pod-client-b
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-kl", "0.0.0.0", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-kl", "0.0.0.0", "5555"]
+      securityContext:
+        privileged: true
 ---
 apiVersion: v1
 kind: Pod
@@ -93,11 +93,11 @@ metadata:
     name: pod-client-c
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-kl", "0.0.0.0", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-kl", "0.0.0.0", "5555"]
+      securityContext:
+        privileged: true
 ---
 # MultiNetworkPolicies
 # this policy accepts ingress trafic from pod-client-a to pod-server
@@ -116,12 +116,12 @@ spec:
     matchLabels:
       name: pod-server
   policyTypes:
-  - Ingress
+    - Ingress
   ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          name: pod-client-a
+    - from:
+        - podSelector:
+            matchLabels:
+              name: pod-client-a
 ---
 apiVersion: k8s.cni.cncf.io/v1beta1
 kind: MultiNetworkPolicy
@@ -135,9 +135,9 @@ spec:
     matchLabels:
       name: pod-server
   policyTypes:
-  - Ingress
+    - Ingress
   ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          name: pod-client-b
+    - from:
+        - podSelector:
+            matchLabels:
+              name: pod-client-b

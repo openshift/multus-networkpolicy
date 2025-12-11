@@ -22,6 +22,23 @@ setup() {
 	sleep 3
 }
 
+@test "check generated nftables rules" {
+	# wait for sync
+	sleep 5
+
+  run has_nftables_table "test-ipblock-list" "pod-server"
+  [ "$status" -eq  "0" ]
+
+  run has_nftables_table "test-ipblock-list" "pod-client-a"
+  [ "$status" -eq  "1" ]
+
+  run has_nftables_table "test-ipblock-list" "pod-client-b"
+  [ "$status" -eq  "1" ]
+
+  run has_nftables_table "test-ipblock-list" "pod-client-c"
+  [ "$status" -eq  "1" ]
+}
+
 @test "test-ipblock-list check client-a" {
 	run kubectl -n test-ipblock-list exec pod-client-a -- sh -c "echo x | nc -w 1 ${server_net1} 5555"
 	[ "$status" -eq  "0" ]

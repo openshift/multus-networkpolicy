@@ -2,8 +2,7 @@
 
 # Note:
 # These test cases, simple, will create simple (one policy for ingress) and test the 
-# traffic policying by ncat (nc) command. In addition, these cases also verifies that
-# simple iptables generation check by iptables-save and pod-iptable in multi-networkpolicy pod.
+# traffic policying by ncat (nc) command.
 
 setup() {
 	cd $BATS_TEST_DIRNAME
@@ -22,6 +21,18 @@ setup() {
 
 	sleep 3
 }
+
+@test "check generated nftables rules" {
+	# wait for sync
+	sleep 5
+
+  run has_nftables_table "test-protocol-only-ports" "pod-a"
+  [ "$status" -eq  "0" ]
+
+  run has_nftables_table "test-protocol-only-ports" "pod-b"
+  [ "$status" -eq  "1" ]
+}
+
 
 @test "test-protocol-only-ports check pod-a -> pod-b TCP" {
 	# nc should succeed from client-a to server by policy
@@ -53,4 +64,3 @@ setup() {
 	run kubectl -n test-protocol-only-ports wait --for=delete -l app=test-protocol-only-ports pod --timeout=${kubewait_timeout}
 	[ "$status" -eq  "0" ]
 }
-#2.2.6.18

@@ -1,0 +1,179 @@
+---
+apiVersion: "k8s.cni.cncf.io/v1"
+kind: NetworkAttachmentDefinition
+metadata:
+  namespace: default
+  name: macvlan1-advanced-ipblock
+spec:
+  config: '{
+            "cniVersion": "0.3.1",
+            "name": "macvlan1-advanced-ipblock",
+            "plugins": [
+                {
+                    "type": "macvlan",
+                    "mode": "bridge",
+                    "capabilities": {"ips": true },
+                    "ipam":{
+                      "type":"static"
+                    }
+                }]
+        }'
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-advanced-ipblock
+---
+# Pods
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-server
+  namespace: test-advanced-ipblock
+  annotations:
+    k8s.v1.cni.cncf.io/networks: '[{
+      "name": "macvlan1-advanced-ipblock",
+      "namespace": "default",
+      "ips": ["2.2.8.1/24"]
+      }]'
+  labels:
+    app: test-advanced-ipblock
+    name: pod-server
+spec:
+  containers:
+    - name: server
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-kl", "0.0.0.0", "5555"]
+      securityContext:
+        privileged: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-client-a
+  namespace: test-advanced-ipblock
+  annotations:
+    k8s.v1.cni.cncf.io/networks: '[{
+      "name": "macvlan1-advanced-ipblock",
+      "namespace": "default",
+      "ips": ["2.2.8.11/24"]
+      }]'
+  labels:
+    app: test-advanced-ipblock
+    name: pod-client-a
+spec:
+  containers:
+    - name: client
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-kl", "0.0.0.0", "5555"]
+      securityContext:
+        privileged: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-client-b
+  namespace: test-advanced-ipblock
+  annotations:
+    k8s.v1.cni.cncf.io/networks: '[{
+      "name": "macvlan1-advanced-ipblock",
+      "namespace": "default",
+      "ips": ["2.2.8.12/24"]
+      }]'
+  labels:
+    app: test-advanced-ipblock
+    name: pod-client-b
+spec:
+  containers:
+    - name: client
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-kl", "0.0.0.0", "5555"]
+      securityContext:
+        privileged: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-client-c
+  namespace: test-advanced-ipblock
+  annotations:
+    k8s.v1.cni.cncf.io/networks: '[{
+      "name": "macvlan1-advanced-ipblock",
+      "namespace": "default",
+      "ips": ["2.2.8.13/24"]
+      }]'
+  labels:
+    app: test-advanced-ipblock
+    name: pod-client-c
+spec:
+  containers:
+    - name: client
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-kl", "0.0.0.0", "5555"]
+      securityContext:
+        privileged: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-client-d
+  namespace: test-advanced-ipblock
+  annotations:
+    k8s.v1.cni.cncf.io/networks: '[{
+      "name": "macvlan1-advanced-ipblock",
+      "namespace": "default",
+      "ips": ["2.2.8.20/24"]
+      }]'
+  labels:
+    app: test-advanced-ipblock
+    name: pod-client-d
+spec:
+  containers:
+    - name: client
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-kl", "0.0.0.0", "5555"]
+      securityContext:
+        privileged: true
+---
+# MultiNetworkPolicies
+apiVersion: k8s.cni.cncf.io/v1beta1
+kind: MultiNetworkPolicy
+metadata:
+  name: advanced-ipblock-ingress-policy
+  namespace: test-advanced-ipblock
+  annotations:
+    k8s.v1.cni.cncf.io/policy-for: default/macvlan1-advanced-ipblock
+spec:
+  podSelector:
+    matchLabels:
+      name: pod-server
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 2.2.8.0/24
+            except:
+              - 2.2.8.13/32
+              - 2.2.8.14/32
+---
+apiVersion: k8s.cni.cncf.io/v1beta1
+kind: MultiNetworkPolicy
+metadata:
+  name: advanced-ipblock-egress-policy
+  namespace: test-advanced-ipblock
+  annotations:
+    k8s.v1.cni.cncf.io/policy-for: default/macvlan1-advanced-ipblock
+spec:
+  podSelector:
+    matchLabels:
+      name: pod-server
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 2.2.8.0/24
+            except:
+              - 2.2.8.13/32
+              - 2.2.8.14/32

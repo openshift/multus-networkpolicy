@@ -4,7 +4,7 @@ kind: NetworkAttachmentDefinition
 metadata:
   namespace: default
   name: macvlan1-simple
-spec: 
+spec:
   config: '{
             "cniVersion": "0.3.1",
             "name": "macvlan1-simple",
@@ -21,11 +21,11 @@ spec:
                 }]
         }'
 ---
-# namespace for MultiNetworkPolicy 
+# namespace for MultiNetworkPolicy
 apiVersion: v1
 kind: Namespace
 metadata:
-    name: test-protocol-only-ports
+  name: test-protocol-only-ports
 ---
 # Pods
 apiVersion: v1
@@ -40,16 +40,16 @@ metadata:
     name: pod-a
 spec:
   containers:
-  - name: netcat-tcp
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-klp", "5555"]
-    securityContext:
-      privileged: true
-  - name: netcat-udp
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-vv", "--udp", "--keep-open", "--sh-exec", "/bin/cat >&2", "--listen", "6666"]
-    securityContext:
-      privileged: true
+    - name: netcat-tcp
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-klp", "5555"]
+      securityContext:
+        privileged: true
+    - name: netcat-udp
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-vv", "--udp", "--keep-open", "--sh-exec", "/bin/cat >&2", "--listen", "6666"]
+      securityContext:
+        privileged: true
 ---
 apiVersion: v1
 kind: Pod
@@ -63,16 +63,16 @@ metadata:
     name: pod-b
 spec:
   containers:
-  - name: netcat-tcp
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-klp", "5555"]
-    securityContext:
-      privileged: true
-  - name: netcat-udp
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-vv", "--udp", "--keep-open", "--sh-exec", "/bin/cat >&2", "--listen", "6666"]
-    securityContext:
-      privileged: true
+    - name: netcat-tcp
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-klp", "5555"]
+      securityContext:
+        privileged: true
+    - name: netcat-udp
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-vv", "--udp", "--keep-open", "--sh-exec", "/bin/cat >&2", "--listen", "6666"]
+      securityContext:
+        privileged: true
 ---
 # MultiNetworkPolicies
 apiVersion: k8s.cni.cncf.io/v1beta1
@@ -87,11 +87,11 @@ spec:
     matchLabels:
       name: pod-a
   policyTypes:
-  - Egress
-  - Ingress
+    - Egress
+    - Ingress
   egress:
-  - ports:
-    - protocol: TCP
+    - ports:
+        - protocol: TCP
   ingress:
-  - ports:
-    - protocol: UDP
+    - ports:
+        - protocol: UDP

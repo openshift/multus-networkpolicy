@@ -68,7 +68,7 @@ func (*PluginDecoder) Decode(jsonBytes []byte) (PluginInfo, error) {
 	var info pluginInfo
 	err := json.Unmarshal(jsonBytes, &info)
 	if err != nil {
-		return nil, fmt.Errorf("decoding version info: %s", err)
+		return nil, fmt.Errorf("decoding version info: %w", err)
 	}
 	if info.CNIVersion_ == "" {
 		return nil, fmt.Errorf("decoding version info: missing field cniVersion")
@@ -86,8 +86,8 @@ func (*PluginDecoder) Decode(jsonBytes []byte) (PluginInfo, error) {
 // minor, and micro numbers or returns an error
 func ParseVersion(version string) (int, int, int, error) {
 	var major, minor, micro int
-	if version == "" {
-		return -1, -1, -1, fmt.Errorf("invalid version %q: the version is empty", version)
+	if version == "" { // special case: no version declared == v0.1.0
+		return 0, 1, 0, nil
 	}
 
 	parts := strings.Split(version, ".")
@@ -97,20 +97,20 @@ func ParseVersion(version string) (int, int, int, error) {
 
 	major, err := strconv.Atoi(parts[0])
 	if err != nil {
-		return -1, -1, -1, fmt.Errorf("failed to convert major version part %q: %v", parts[0], err)
+		return -1, -1, -1, fmt.Errorf("failed to convert major version part %q: %w", parts[0], err)
 	}
 
 	if len(parts) >= 2 {
 		minor, err = strconv.Atoi(parts[1])
 		if err != nil {
-			return -1, -1, -1, fmt.Errorf("failed to convert minor version part %q: %v", parts[1], err)
+			return -1, -1, -1, fmt.Errorf("failed to convert minor version part %q: %w", parts[1], err)
 		}
 	}
 
 	if len(parts) >= 3 {
 		micro, err = strconv.Atoi(parts[2])
 		if err != nil {
-			return -1, -1, -1, fmt.Errorf("failed to convert micro version part %q: %v", parts[2], err)
+			return -1, -1, -1, fmt.Errorf("failed to convert micro version part %q: %w", parts[2], err)
 		}
 	}
 
@@ -137,6 +137,30 @@ func GreaterThanOrEqualTo(version, otherVersion string) (bool, error) {
 		if firstMinor > secondMinor {
 			return true, nil
 		} else if firstMinor == secondMinor && firstMicro >= secondMicro {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// GreaterThan returns true if the first version is greater than the second
+func GreaterThan(version, otherVersion string) (bool, error) {
+	firstMajor, firstMinor, firstMicro, err := ParseVersion(version)
+	if err != nil {
+		return false, err
+	}
+
+	secondMajor, secondMinor, secondMicro, err := ParseVersion(otherVersion)
+	if err != nil {
+		return false, err
+	}
+
+	if firstMajor > secondMajor {
+		return true, nil
+	} else if firstMajor == secondMajor {
+		if firstMinor > secondMinor {
+			return true, nil
+		} else if firstMinor == secondMinor && firstMicro > secondMicro {
 			return true, nil
 		}
 	}

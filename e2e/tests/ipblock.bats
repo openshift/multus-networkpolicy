@@ -22,17 +22,21 @@ setup() {
 	sleep 3
 }
 
-@test "check generated iptables rules" {
+@test "check generated nftables rules" {
 	# wait for sync
 	sleep 5
-        run kubectl -n test-ipblock exec pod-server -it -- sh -c "iptables-save | grep MULTI-0-INGRESS"
-	[ "$status" -eq  "0" ]
-        run kubectl -n test-ipblock exec pod-client-a -it -- sh -c "iptables-save | grep MULTI-0-INGRESS"
-	[ "$status" -eq  "1" ]
-        run kubectl -n test-ipblock exec pod-client-b -it -- sh -c "iptables-save | grep MULTI-0-INGRESS"
-	[ "$status" -eq  "1" ]
-        run kubectl -n test-ipblock exec pod-client-c -it -- sh -c "iptables-save | grep MULTI-0-INGRESS"
-	[ "$status" -eq  "1" ]
+
+  run has_nftables_table "test-ipblock" "pod-server"
+  [ "$status" -eq  "0" ]
+
+  run has_nftables_table "test-ipblock" "pod-client-a"
+  [ "$status" -eq  "1" ]
+
+  run has_nftables_table "test-ipblock" "pod-client-b"
+  [ "$status" -eq  "1" ]
+
+  run has_nftables_table "test-ipblock" "pod-client-c"
+  [ "$status" -eq  "1" ]
 }
 
 @test "test-ipblock check client-a" {

@@ -4,7 +4,7 @@ kind: NetworkAttachmentDefinition
 metadata:
   namespace: default
   name: macvlan1-simple
-spec: 
+spec:
   config: '{
             "cniVersion": "0.3.1",
             "name": "macvlan1-simple",
@@ -21,11 +21,11 @@ spec:
                 }]
         }'
 ---
-# namespace for MultiNetworkPolicy 
+# namespace for MultiNetworkPolicy
 apiVersion: v1
 kind: Namespace
 metadata:
-    name: test-simple-v4-egress-list
+  name: test-simple-v4-egress-list
 ---
 # Pods
 apiVersion: v1
@@ -40,11 +40,11 @@ metadata:
     name: pod-server
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-klp", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-klp", "5555"]
+      securityContext:
+        privileged: true
 ---
 apiVersion: v1
 kind: Pod
@@ -58,11 +58,11 @@ metadata:
     name: pod-client-a
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-klp", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-klp", "5555"]
+      securityContext:
+        privileged: true
 ---
 apiVersion: v1
 kind: Pod
@@ -76,11 +76,11 @@ metadata:
     name: pod-client-b
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-klp", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-klp", "5555"]
+      securityContext:
+        privileged: true
 ---
 apiVersion: v1
 kind: Pod
@@ -94,11 +94,11 @@ metadata:
     name: pod-client-c
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-klp", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-klp", "5555"]
+      securityContext:
+        privileged: true
 ---
 # MultiNetworkPolicies
 # this policy accepts egress trafic from pod-client-a to pod-server
@@ -114,13 +114,13 @@ spec:
     matchLabels:
       name: pod-server
   policyTypes:
-  - Egress
+    - Egress
   egress:
-  - to:
-    - podSelector:
-        matchLabels:
-          name: pod-client-a
-  - to:
-    - podSelector:
-        matchLabels:
-          name: pod-client-c
+    - to:
+        - podSelector:
+            matchLabels:
+              name: pod-client-a
+    - to:
+        - podSelector:
+            matchLabels:
+              name: pod-client-c

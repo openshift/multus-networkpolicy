@@ -4,7 +4,7 @@ kind: NetworkAttachmentDefinition
 metadata:
   namespace: default
   name: macvlan1-simple
-spec: 
+spec:
   config: '{
             "cniVersion": "0.3.1",
             "name": "macvlan1-simple",
@@ -21,16 +21,16 @@ spec:
                 }]
         }'
 ---
-# namespace for MultiNetworkPolicy 
+# namespace for MultiNetworkPolicy
 apiVersion: v1
 kind: Namespace
 metadata:
-    name: test-ingress-ns-selector-no-pods
---- 
+  name: test-ingress-ns-selector-no-pods
+---
 apiVersion: v1
 kind: Namespace
 metadata:
-    name: test-ingress-ns-selector-no-pods-blue
+  name: test-ingress-ns-selector-no-pods-blue
 ---
 # Pods
 apiVersion: v1
@@ -45,11 +45,11 @@ metadata:
     name: pod-server
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-klp", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-klp", "5555"]
+      securityContext:
+        privileged: true
 ---
 apiVersion: v1
 kind: Pod
@@ -63,11 +63,11 @@ metadata:
     name: pod-client-a
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-klp", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-klp", "5555"]
+      securityContext:
+        privileged: true
 ---
 apiVersion: v1
 kind: Pod
@@ -81,11 +81,11 @@ metadata:
     name: pod-client-b
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-klp", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-klp", "5555"]
+      securityContext:
+        privileged: true
 ---
 # MultiNetworkPolicies
 # this policy accepts ingress trafic from pod-client-a to pod-server
@@ -101,9 +101,9 @@ spec:
     matchLabels:
       name: pod-server
   ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          foo: bar # No namespace with this label exists
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              foo: bar # No namespace with this label exists
   policyTypes:
-  - Ingress
+    - Ingress

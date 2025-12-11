@@ -22,7 +22,7 @@ spec:
 apiVersion: v1
 kind: Namespace
 metadata:
-    name: test-ipblock-stacked
+  name: test-ipblock-stacked
 ---
 # Pods
 apiVersion: v1
@@ -41,11 +41,11 @@ metadata:
     name: pod-server
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-kl", "0.0.0.0", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-kl", "0.0.0.0", "5555"]
+      securityContext:
+        privileged: true
 ---
 apiVersion: v1
 kind: Pod
@@ -63,11 +63,11 @@ metadata:
     name: pod-client-a
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-kl", "0.0.0.0", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-kl", "0.0.0.0", "5555"]
+      securityContext:
+        privileged: true
 ---
 apiVersion: v1
 kind: Pod
@@ -85,11 +85,11 @@ metadata:
     name: pod-client-b
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-kl", "0.0.0.0", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-kl", "0.0.0.0", "5555"]
+      securityContext:
+        privileged: true
 ---
 apiVersion: v1
 kind: Pod
@@ -107,11 +107,11 @@ metadata:
     name: pod-client-c
 spec:
   containers:
-  - name: macvlan-worker1
-    image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-iptables:e2e-test
-    command: ["nc", "-kl", "0.0.0.0", "5555"]
-    securityContext:
-      privileged: true
+    - name: macvlan-worker1
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-kl", "0.0.0.0", "5555"]
+      securityContext:
+        privileged: true
 ---
 # MultiNetworkPolicies
 # this policy accepts ingress trafic from pod-client-a to pod-server
@@ -130,11 +130,11 @@ spec:
     matchLabels:
       name: pod-server
   policyTypes:
-  - Ingress
+    - Ingress
   ingress:
-  - from:
-    - ipBlock:
-        cidr: 2.2.5.11/32
+    - from:
+        - ipBlock:
+            cidr: 2.2.5.11/32
 ---
 # MultiNetworkPolicies
 # this policy accepts ingress trafic from pod-client-a to pod-server
@@ -153,8 +153,8 @@ spec:
     matchLabels:
       name: pod-server
   policyTypes:
-  - Ingress
+    - Ingress
   ingress:
-  - from:
-    - ipBlock:
-        cidr: 2.2.5.12/32
+    - from:
+        - ipBlock:
+            cidr: 2.2.5.12/32
