@@ -112,6 +112,20 @@ func run() error {
 	commonRules.AcceptICMP = acceptICMP
 	commonRules.AcceptICMPv6 = acceptICMPv6
 
+	// TODO: put this in ClusterNetworkOperator
+	commonRules.CustomIPv6EgressRules = []string{
+		"icmpv6 type nd-neighbor-solicit accept",
+		"icmpv6 type nd-neighbor-advert accept",
+		"icmpv6 type nd-router-advert accept",
+		"icmpv6 type nd-router-solicit accept",
+	}
+	commonRules.CustomIPv6IngressRules = []string{
+		"icmpv6 type nd-neighbor-solicit accept",
+		"icmpv6 type nd-neighbor-advert accept",
+		"icmpv6 type nd-router-advert accept",
+		"icmpv6 type nd-router-solicit accept",
+	}
+
 	setupLog.Info("Common rules applied to all pods affected by MultiNetworkPolicies", "rules", commonRules)
 
 	ctx := ctrl.SetupSignalHandler()
