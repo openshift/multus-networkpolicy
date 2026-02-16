@@ -24,6 +24,20 @@ setup() {
 	sleep 5
 }
 
+@test "check generated nftables rules" {
+	# wait for sync
+	sleep 5
+
+  run has_nftables_table "test-ingress-ns-selector-no-pods" "pod-server"
+  [ "$status" -eq  "0" ]
+
+  run has_nftables_table "test-ingress-ns-selector-no-pods" "pod-client-a"
+  [ "$status" -eq  "1" ]
+
+  run has_nftables_table "test-ingress-ns-selector-no-pods-blue" "pod-client-b"
+  [ "$status" -eq  "1" ]
+}
+
 @test "test-ingress-ns-selector-no-pods check client-a -> server" {
 	# nc should NOT succeed from client-a to server by policy
 	run kubectl -n test-ingress-ns-selector-no-pods exec pod-client-a -- sh -c "echo x | nc -w 1 ${server_net1} 5555"

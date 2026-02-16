@@ -1,0 +1,171 @@
+---
+apiVersion: "k8s.cni.cncf.io/v1"
+kind: NetworkAttachmentDefinition
+metadata:
+  namespace: default
+  name: macvlan1-complex-ports
+spec:
+  config: '{
+            "cniVersion": "0.3.1",
+            "name": "macvlan1-complex-ports",
+            "plugins": [
+                {
+                    "type": "macvlan",
+                    "mode": "bridge",
+                    "ipam":{
+                      "type":"host-local",
+                      "subnet":"2.2.7.0/24",
+                      "rangeStart":"2.2.7.8",
+                      "rangeEnd":"2.2.7.67"
+                    }
+                }]
+        }'
+---
+# namespace for MultiNetworkPolicy
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-complex-ports
+---
+# Pods
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-server
+  namespace: test-complex-ports
+  annotations:
+    k8s.v1.cni.cncf.io/networks: default/macvlan1-complex-ports
+  labels:
+    app: test-complex-ports
+    name: pod-server
+spec:
+  containers:
+    - name: web-server
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["sh", "-c", "nc -klp 80 & nc -klp 443 & nc -klp 22 & nc -lu 53 & nc -klp 8080 & wait"]
+      ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        - name: https
+          containerPort: 443
+          protocol: TCP
+        - name: ssh
+          containerPort: 22
+          protocol: TCP
+        - name: dns
+          containerPort: 53
+          protocol: UDP
+        - name: custom
+          containerPort: 8080
+          protocol: TCP
+      securityContext:
+        privileged: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-client-a
+  namespace: test-complex-ports
+  annotations:
+    k8s.v1.cni.cncf.io/networks: default/macvlan1-complex-ports
+  labels:
+    app: test-complex-ports
+    name: pod-client-a
+    role: allowed-client
+spec:
+  containers:
+    - name: client
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-klp", "80"]
+      securityContext:
+        privileged: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-client-b
+  namespace: test-complex-ports
+  annotations:
+    k8s.v1.cni.cncf.io/networks: default/macvlan1-complex-ports
+  labels:
+    app: test-complex-ports
+    name: pod-client-b
+    role: blocked-client
+spec:
+  containers:
+    - name: client
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-klp", "80"]
+      securityContext:
+        privileged: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-client-c
+  namespace: test-complex-ports
+  annotations:
+    k8s.v1.cni.cncf.io/networks: default/macvlan1-complex-ports
+  labels:
+    app: test-complex-ports
+    name: pod-client-c
+    role: allowed-client
+spec:
+  containers:
+    - name: client
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-klp", "80"]
+      securityContext:
+        privileged: true
+---
+# MultiNetworkPolicies
+apiVersion: k8s.cni.cncf.io/v1beta1
+kind: MultiNetworkPolicy
+metadata:
+  name: complex-port-ingress-policy
+  namespace: test-complex-ports
+  annotations:
+    k8s.v1.cni.cncf.io/policy-for: default/macvlan1-complex-ports
+spec:
+  podSelector:
+    matchLabels:
+      name: pod-server
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              role: allowed-client
+      ports:
+        - port: 80
+          protocol: TCP
+        - port: 443
+          protocol: TCP
+        - port: 22
+          protocol: TCP
+        - port: 53
+          protocol: UDP
+---
+apiVersion: k8s.cni.cncf.io/v1beta1
+kind: MultiNetworkPolicy
+metadata:
+  name: complex-port-egress-policy
+  namespace: test-complex-ports
+  annotations:
+    k8s.v1.cni.cncf.io/policy-for: default/macvlan1-complex-ports
+spec:
+  podSelector:
+    matchLabels:
+      name: pod-server
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              role: allowed-client
+      ports:
+        - port: 80
+          protocol: TCP

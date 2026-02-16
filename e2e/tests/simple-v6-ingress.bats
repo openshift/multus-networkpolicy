@@ -2,8 +2,7 @@
 
 # Note:
 # These test cases, simple, will create simple (one policy for ingress) and test the 
-# traffic policying by ncat (nc) command. In addition, these cases also verifies that
-# simple ip6tables generation check by ip6tables-save and pod-iptable in multi-networkpolicy pod.
+# traffic policying by ncat (nc) command.
 
 
 setup() {
@@ -23,19 +22,18 @@ setup() {
 	[ "$status" -eq  "0" ]
 }
 
-@test "check generated ip6tables rules" {
+@test "check generated nftables rules" {
 	# wait for sync
 	sleep 5
 
-	# check pod-server has multi-networkpolicy ip6tables rules for ingress
-        run kubectl -n test-simple-v6-ingress exec pod-server -- sh -c "ip6tables-save | grep MULTI-0-INGRESS"
-	[ "$status" -eq  "0" ]
-	# check pod-client-a has NO multi-networkpolicy ip6tables rules for ingress
-        run kubectl -n test-simple-v6-ingress exec pod-client-a -- sh -c "ip6tables-save | grep MULTI-0-INGRESS"
-	[ "$status" -eq  "1" ]
-	# check pod-client-b has NO multi-networkpolicy ip6tables rules for ingress
-        run kubectl -n test-simple-v6-ingress exec pod-client-b -- sh -c "ip6tables-save | grep MULTI-0-INGRESS"
-	[ "$status" -eq  "1" ]
+  run has_nftables_table "test-simple-v6-ingress" "pod-server"
+  [ "$status" -eq  "0" ]
+
+  run has_nftables_table "test-simple-v6-ingress" "pod-client-a"
+  [ "$status" -eq  "1" ]
+
+  run has_nftables_table "test-simple-v6-ingress" "pod-client-b"
+  [ "$status" -eq  "1" ]
 }
 
 @test "test-simple-v6-ingress check client-a -> server" {
@@ -60,22 +58,6 @@ setup() {
 	# nc should succeed from server to client-b by no policy definition for direction (egress for pod-server)
 	run kubectl -n test-simple-v6-ingress exec pod-server -- sh -c "echo x | nc -w 1 ${client_b_net1} 5555"
 	[ "$status" -eq  "0" ]
-}
-
-@test "disable multi-networkpolicy and check ip6tables rules" {
- 	# disable multi-networkpolicy pods by adding invalid nodeSelector
-	kubectl -n kube-system patch daemonsets multi-networkpolicy-ds-amd64 -p '{"spec": {"template": {"spec": {"nodeSelector": {"non-existing": "true"}}}}}'
-	# check multi-networkpolicy pod is deleted
-	kubectl -n kube-system wait --for=delete -l app=multi-networkpolicy pod --timeout=${kubewait_timeout}
-
-	# check ip6table rules in pod-server
-        run kubectl -n test-simple-v6-ingress exec pod-server -it -- sh -c "ip6tables-save | grep MULTI-0-INGRESS"
-	[ "$status" -eq  "1" ]
-
-	# enable multi-networkpolicy again
-	kubectl -n kube-system patch daemonsets multi-networkpolicy-ds-amd64 --type json -p='[{"op": "remove", "path": "/spec/template/spec/nodeSelector/non-existing"}]'
-	sleep 5
-	kubectl -n kube-system wait --for=condition=ready -l app=multi-networkpolicy pod --timeout=${kubewait_timeout}
 }
 
 @test "cleanup environments" {

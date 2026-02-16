@@ -2,8 +2,7 @@
 
 # Note:
 # These test cases, simple, will create simple (one policy for ingress) and test the 
-# traffic policying by ncat (nc) command. In addition, these cases also verifies that
-# simple ip6tables generation check by ip6tables-save and pod-iptable in multi-networkpolicy pod.
+# traffic policying by ncat (nc) command.
 
 
 setup() {
@@ -25,6 +24,23 @@ setup() {
 	
 	# wait for sync
 	sleep 5
+}
+
+@test "check generated nftables rules" {
+	# wait for sync
+	sleep 5
+
+  run has_nftables_table "test-simple-v6-ingress-list" "pod-server"
+  [ "$status" -eq  "0" ]
+
+  run has_nftables_table "test-simple-v6-ingress-list" "pod-client-a"
+  [ "$status" -eq  "1" ]
+
+  run has_nftables_table "test-simple-v6-ingress-list" "pod-client-b"
+  [ "$status" -eq  "1" ]
+
+  run has_nftables_table "test-simple-v6-ingress-list" "pod-client-c"
+  [ "$status" -eq  "1" ]
 }
 
 @test "test-simple-v6-ingress-list check client-a -> server" {

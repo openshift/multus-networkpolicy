@@ -1,17 +1,21 @@
-# This Dockerfile is used to build the image available on DockerHub
-FROM golang:1.24 as build
+FROM golang:1.24 as builder
+ARG TARGETOS
+ARG TARGETARCH
 
-# Add everything
-ADD . /usr/src/multi-networkpolicy-iptables
+WORKDIR /workspace
 
-RUN cd /usr/src/multi-networkpolicy-iptables && \
-    CGO_ENABLED=0 go build ./cmd/multi-networkpolicy-iptables/
+COPY go.mod go.mod
+COPY go.sum go.sum
+RUN go mod download
 
-FROM fedora:38
-LABEL org.opencontainers.image.source https://github.com/k8snetworkplumbingwg/multi-networkpolicy-iptables
-RUN dnf install -y iptables-utils iptables-legacy iptables-nft
-RUN alternatives --set iptables /usr/sbin/iptables-nft
-COPY --from=build /usr/src/multi-networkpolicy-iptables/multi-networkpolicy-iptables /usr/bin
-WORKDIR /usr/bin
+COPY cmd/main.go cmd/main.go
+COPY pkg/ pkg/
 
-ENTRYPOINT ["multi-networkpolicy-iptables"]
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o multi-networkpolicy-nftables cmd/main.go
+
+FROM fedora:42
+WORKDIR /
+
+RUN dnf install -y nftables
+COPY --from=builder /workspace/multi-networkpolicy-nftables .
+ENTRYPOINT ["/multi-networkpolicy-nftables"]
