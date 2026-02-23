@@ -1,0 +1,57 @@
+table inet multi_networkpolicy {
+	comment "MultiNetworkPolicy"
+	set smi-c086e2d1ce68c0c69ca6243e29797a7d {
+		type ifname
+		comment "Managed interfaces set for test-ns/accept-all"
+		elements = { "eth1",
+			     "eth2" }
+	}
+
+	chain input {
+		comment "Input Dispatcher"
+		type filter hook input priority filter; policy accept;
+		iifname @smi-c086e2d1ce68c0c69ca6243e29797a7d jump ingress comment "test-ns/accept-all"
+	}
+
+	chain output {
+		comment "Output Dispatcher"
+		type filter hook output priority filter; policy accept;
+		oifname @smi-c086e2d1ce68c0c69ca6243e29797a7d jump egress comment "test-ns/accept-all"
+	}
+
+	chain ingress {
+		comment "Ingress Policies"
+		ct state established,related accept comment "Connection tracking"
+		jump common-ingress comment "Jump to common"
+		jump cnp-c086e2d1ce68c0c69ca6243e29797a7d comment "test-ns/accept-all"
+		drop comment "Drop rule"
+	}
+
+	chain common-ingress {
+		comment "Common Policies"
+	}
+
+	chain egress {
+		comment "Egress Policies"
+		ct state established,related accept comment "Connection tracking"
+		jump common-egress comment "Jump to common"
+		jump cnp-c086e2d1ce68c0c69ca6243e29797a7d comment "test-ns/accept-all"
+		drop comment "Drop rule"
+	}
+
+	chain common-egress {
+		comment "Common Policies"
+	}
+
+	chain cnp-c086e2d1ce68c0c69ca6243e29797a7d {
+		comment "MultiNetworkPolicy test-ns/accept-all"
+		iifname "eth1" ip saddr 10.0.1.1 accept
+		iifname "eth1" ip6 saddr 2001:db8:1::1 accept
+		iifname "eth2" ip saddr 10.0.2.1 accept
+		iifname "eth2" ip6 saddr 2001:db8:2::1 accept
+		iifname "eth1" accept
+		iifname "eth2" accept
+		oifname "eth1" accept
+		oifname "eth2" accept
+	}
+}

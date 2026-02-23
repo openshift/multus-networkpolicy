@@ -41,7 +41,7 @@ func (n *NFTables) enforcePolicy(ctx context.Context, pod *corev1.Pod, interface
 	// Find the interfaces on the pod that belong to the networks of the policy (Policy-for annotation)
 	matchedInterfaces := getMatchedInterfaces(interfaces, policy.Networks)
 	if len(matchedInterfaces) == 0 {
-		logger.Info("No matched interfaces found, skipping")
+		logger.Info("No matched interfaces found, skipping", "policyNetworks", policy.Networks, "interfaces", interfaces)
 		return nil
 	}
 
@@ -437,7 +437,7 @@ func (n *NFTables) createIngressRules(ctx context.Context, tx *knftables.Transac
 				ipv6SetName := fmt.Sprintf("%s%s_ingress_ipv6_%s_%d", prefixNetworkPolicySet, hashName, intf.Name, i)
 				setComment := fmt.Sprintf("Addresses for %s/%s", policy.Namespace, policy.Name)
 
-				ipv4Addresses, ipv6Addresses := classifyAddresses(podInterfacesMap, intf.Network)
+				ipv4Addresses, ipv6Addresses := classifyAddresses(podInterfacesMap, policy)
 
 				if len(ipv4Addresses) > 0 {
 					createAndPopulateIPSet(tx, ipv4SetName, "ipv4_addr", setComment, ipv4Addresses, false)
@@ -561,7 +561,7 @@ func (n *NFTables) createEgressRules(ctx context.Context, tx *knftables.Transact
 				ipv6SetName := fmt.Sprintf("%s%s_egress_ipv6_%s_%d", prefixNetworkPolicySet, hashName, intf.Name, i)
 				setComment := fmt.Sprintf("Addresses for %s/%s", policy.Namespace, policy.Name)
 
-				ipv4Addresses, ipv6Addresses := classifyAddresses(podInterfacesMap, intf.Network)
+				ipv4Addresses, ipv6Addresses := classifyAddresses(podInterfacesMap, policy)
 
 				if len(ipv4Addresses) > 0 {
 					createAndPopulateIPSet(tx, ipv4SetName, "ipv4_addr", setComment, ipv4Addresses, false)
@@ -916,27 +916,26 @@ func getPodInterfacesMap(pods []corev1.Pod, networks []string) map[string][]Inte
 }
 
 // classifyAddresses classifies the IP addresses into IPv4 and IPv6
-func classifyAddresses(interfacesPerPod map[string][]Interface, network string) ([]string, []string) {
+func classifyAddresses(interfacesPerPod map[string][]Interface, policy *datastore.Policy) ([]string, []string) {
 	var ipv4Addresses []string
 	var ipv6Addresses []string
 
-	for _, interfaces := range interfacesPerPod {
-		for _, intf := range interfaces {
-			if intf.Network == network {
-				for _, ip := range intf.IPs {
-					// Parse the IP address to validate and classify it
-					parsedIP := net.ParseIP(ip)
-					if parsedIP == nil {
-						// Invalid IP address, skip it
-						continue
-					}
+	for _, peerPodInterfaces := range interfacesPerPod {
+		matchedInterfaces := getMatchedInterfaces(peerPodInterfaces, policy.Networks)
+		for _, intf := range matchedInterfaces {
+			for _, ip := range intf.IPs {
+				// Parse the IP address to validate and classify it
+				parsedIP := net.ParseIP(ip)
+				if parsedIP == nil {
+					// Invalid IP address, skip it
+					continue
+				}
 
-					// Check if it's IPv4 (including IPv4-mapped IPv6)
-					if parsedIP.To4() != nil {
-						ipv4Addresses = append(ipv4Addresses, ip)
-					} else {
-						ipv6Addresses = append(ipv6Addresses, ip)
-					}
+				// Check if it's IPv4 (including IPv4-mapped IPv6)
+				if parsedIP.To4() != nil {
+					ipv4Addresses = append(ipv4Addresses, ip)
+				} else {
+					ipv6Addresses = append(ipv6Addresses, ip)
 				}
 			}
 		}

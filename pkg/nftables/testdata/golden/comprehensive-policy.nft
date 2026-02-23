@@ -1,0 +1,179 @@
+table inet multi_networkpolicy {
+	comment "MultiNetworkPolicy"
+	set smi-e03de052de4c995afa1e5ce221a635e8 {
+		type ifname
+		comment "Managed interfaces set for test-ns/comprehensive"
+		elements = { "eth1",
+			     "eth2" }
+	}
+
+	set snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv4_eth1_0 {
+		type ipv4_addr
+		comment "Addresses for test-ns/comprehensive"
+		elements = { 10.0.1.10, 10.0.2.10 }
+	}
+
+	set snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv6_eth1_0 {
+		type ipv6_addr
+		comment "Addresses for test-ns/comprehensive"
+		elements = { 2001:db8:1::10,
+			     2001:db8:2::10 }
+	}
+
+	set snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv4_eth2_0 {
+		type ipv4_addr
+		comment "Addresses for test-ns/comprehensive"
+		elements = { 10.0.1.10, 10.0.2.10 }
+	}
+
+	set snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv6_eth2_0 {
+		type ipv6_addr
+		comment "Addresses for test-ns/comprehensive"
+		elements = { 2001:db8:1::10,
+			     2001:db8:2::10 }
+	}
+
+	set snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv4_eth1_1 {
+		type ipv4_addr
+		comment "Addresses for test-ns/comprehensive"
+		elements = { 10.0.1.20, 10.0.1.21,
+			     10.0.2.20, 10.0.2.21 }
+	}
+
+	set snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv6_eth1_1 {
+		type ipv6_addr
+		comment "Addresses for test-ns/comprehensive"
+		elements = { 2001:db8:1::20,
+			     2001:db8:1::21,
+			     2001:db8:2::20,
+			     2001:db8:2::21 }
+	}
+
+	set snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv4_eth2_1 {
+		type ipv4_addr
+		comment "Addresses for test-ns/comprehensive"
+		elements = { 10.0.1.20, 10.0.1.21,
+			     10.0.2.20, 10.0.2.21 }
+	}
+
+	set snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv6_eth2_1 {
+		type ipv6_addr
+		comment "Addresses for test-ns/comprehensive"
+		elements = { 2001:db8:1::20,
+			     2001:db8:1::21,
+			     2001:db8:2::20,
+			     2001:db8:2::21 }
+	}
+
+	set snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv4_cidr_2 {
+		type ipv4_addr
+		flags interval
+		comment "CIDRs for test-ns/comprehensive"
+		elements = { 10.0.0.0/8 }
+	}
+
+	set snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv4_except_2 {
+		type ipv4_addr
+		flags interval
+		comment "Excepts for test-ns/comprehensive"
+		elements = { 10.1.0.0/16 }
+	}
+
+	set snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv6_cidr_2 {
+		type ipv6_addr
+		flags interval
+		comment "CIDRs for test-ns/comprehensive"
+		elements = { 2001:db8::/32 }
+	}
+
+	set snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv6_except_2 {
+		type ipv6_addr
+		flags interval
+		comment "Excepts for test-ns/comprehensive"
+		elements = { 2001:db8:1::/48 }
+	}
+
+	set snp-e03de052de4c995afa1e5ce221a635e8_egress_ipv4_eth1_0 {
+		type ipv4_addr
+		comment "Addresses for test-ns/comprehensive"
+		elements = { 10.0.1.21, 10.0.2.21 }
+	}
+
+	set snp-e03de052de4c995afa1e5ce221a635e8_egress_ipv6_eth1_0 {
+		type ipv6_addr
+		comment "Addresses for test-ns/comprehensive"
+		elements = { 2001:db8:1::21,
+			     2001:db8:2::21 }
+	}
+
+	set snp-e03de052de4c995afa1e5ce221a635e8_egress_ipv4_eth2_0 {
+		type ipv4_addr
+		comment "Addresses for test-ns/comprehensive"
+		elements = { 10.0.1.21, 10.0.2.21 }
+	}
+
+	set snp-e03de052de4c995afa1e5ce221a635e8_egress_ipv6_eth2_0 {
+		type ipv6_addr
+		comment "Addresses for test-ns/comprehensive"
+		elements = { 2001:db8:1::21,
+			     2001:db8:2::21 }
+	}
+
+	chain input {
+		comment "Input Dispatcher"
+		type filter hook input priority filter; policy accept;
+		iifname @smi-e03de052de4c995afa1e5ce221a635e8 jump ingress comment "test-ns/comprehensive"
+	}
+
+	chain output {
+		comment "Output Dispatcher"
+		type filter hook output priority filter; policy accept;
+		oifname @smi-e03de052de4c995afa1e5ce221a635e8 jump egress comment "test-ns/comprehensive"
+	}
+
+	chain ingress {
+		comment "Ingress Policies"
+		ct state established,related accept comment "Connection tracking"
+		jump common-ingress comment "Jump to common"
+		jump cnp-e03de052de4c995afa1e5ce221a635e8 comment "test-ns/comprehensive"
+		drop comment "Drop rule"
+	}
+
+	chain common-ingress {
+		comment "Common Policies"
+	}
+
+	chain egress {
+		comment "Egress Policies"
+		ct state established,related accept comment "Connection tracking"
+		jump common-egress comment "Jump to common"
+		jump cnp-e03de052de4c995afa1e5ce221a635e8 comment "test-ns/comprehensive"
+		drop comment "Drop rule"
+	}
+
+	chain common-egress {
+		comment "Common Policies"
+	}
+
+	chain cnp-e03de052de4c995afa1e5ce221a635e8 {
+		comment "MultiNetworkPolicy test-ns/comprehensive"
+		iifname "eth1" ip saddr 10.0.1.1 accept
+		iifname "eth1" ip6 saddr 2001:db8:1::1 accept
+		iifname "eth2" ip saddr 10.0.2.1 accept
+		iifname "eth2" ip6 saddr 2001:db8:2::1 accept
+		iifname "eth1" ip saddr @snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv4_eth1_0 tcp dport { 80, 443, 8000-8010 } accept
+		iifname "eth1" ip6 saddr @snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv6_eth1_0 tcp dport { 80, 443, 8000-8010 } accept
+		iifname "eth2" ip saddr @snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv4_eth2_0 tcp dport { 80, 443, 8000-8010 } accept
+		iifname "eth2" ip6 saddr @snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv6_eth2_0 tcp dport { 80, 443, 8000-8010 } accept
+		iifname "eth1" ip saddr @snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv4_eth1_1 accept
+		iifname "eth1" ip6 saddr @snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv6_eth1_1 accept
+		iifname "eth2" ip saddr @snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv4_eth2_1 accept
+		iifname "eth2" ip6 saddr @snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv6_eth2_1 accept
+		iifname @smi-e03de052de4c995afa1e5ce221a635e8 ip saddr @snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv4_cidr_2 ip saddr != @snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv4_except_2 tcp dport { 80, 443, 8000-8010 } accept
+		iifname @smi-e03de052de4c995afa1e5ce221a635e8 ip6 saddr @snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv6_cidr_2 ip6 saddr != @snp-e03de052de4c995afa1e5ce221a635e8_ingress_ipv6_except_2 tcp dport { 80, 443, 8000-8010 } accept
+		oifname "eth1" ip daddr @snp-e03de052de4c995afa1e5ce221a635e8_egress_ipv4_eth1_0 accept
+		oifname "eth1" ip6 daddr @snp-e03de052de4c995afa1e5ce221a635e8_egress_ipv6_eth1_0 accept
+		oifname "eth2" ip daddr @snp-e03de052de4c995afa1e5ce221a635e8_egress_ipv4_eth2_0 accept
+		oifname "eth2" ip6 daddr @snp-e03de052de4c995afa1e5ce221a635e8_egress_ipv6_eth2_0 accept
+	}
+}
