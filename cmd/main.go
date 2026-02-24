@@ -14,6 +14,7 @@ import (
 	nodeutil "k8s.io/component-helpers/node/util"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/controller"
 	"github.com/k8snetworkplumbingwg/multi-network-policy-nftables/pkg/cri"
@@ -140,6 +141,7 @@ func run() error {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:         scheme,
 		LeaderElection: false,
+		Metrics:        metricsserver.Options{BindAddress: "0"},
 	})
 	if err != nil {
 		return fmt.Errorf("unable to start manager: %w", err)
