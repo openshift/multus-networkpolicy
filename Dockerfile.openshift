@@ -8,7 +8,7 @@ RUN CGO_ENABLED=0 go build -a -o multi-networkpolicy-nftables ./cmd/
 
 FROM registry.ci.openshift.org/ocp/4.22:base-rhel9
 LABEL org.opencontainers.image.source https://github.com/openshift/multus-networkpolicy
-RUN dnf install -y nftables && dnf clean all
+RUN dnf install -y nftables && dnf clean all && rm -rf /var/cache/dnf/*
 COPY --from=build /usr/src/multus-networkpolicy/multi-networkpolicy-nftables /usr/bin
 WORKDIR /usr/bin
 
