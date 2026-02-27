@@ -13,7 +13,7 @@ RUN dnf install -y \
     jq \
     procps-ng \
     util-linux \
-    && dnf clean all
+    && dnf clean all && rm -rf /var/cache/dnf/*
 
 # Ensure nftables service is available
 RUN systemctl enable nftables || true

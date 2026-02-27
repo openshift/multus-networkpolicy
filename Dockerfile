@@ -16,6 +16,6 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o mu
 FROM fedora:42
 WORKDIR /
 
-RUN dnf install -y nftables
+RUN dnf install -y nftables && dnf clean all && rm -rf /var/cache/dnf/*
 COPY --from=builder /workspace/multi-networkpolicy-nftables .
 ENTRYPOINT ["/multi-networkpolicy-nftables"]
