@@ -9,7 +9,7 @@ RUN cd /usr/src/multi-networkpolicy-iptables && \
 
 FROM fedora:38
 LABEL org.opencontainers.image.source https://github.com/k8snetworkplumbingwg/multi-networkpolicy-iptables
-RUN dnf install -y iptables-utils iptables-legacy iptables-nft
+RUN dnf install -y iptables-utils iptables-legacy iptables-nft && dnf clean all && rm -rf /var/cache/dnf/*
 RUN alternatives --set iptables /usr/sbin/iptables-nft
 COPY --from=build /usr/src/multi-networkpolicy-iptables/multi-networkpolicy-iptables /usr/bin
 WORKDIR /usr/bin
