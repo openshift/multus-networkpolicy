@@ -3364,9 +3364,9 @@ var _ = Describe("NFTables Functions", func() {
 	Context("classifyAddresses", func() {
 		It("should return empty slices for empty input", func() {
 			interfacesPerPod := map[string][]Interface{}
-			network := "net1"
+			policy := &datastore.Policy{Networks: []string{"net1"}}
 
-			ipv4, ipv6 := classifyAddresses(interfacesPerPod, network)
+			ipv4, ipv6 := classifyAddresses(interfacesPerPod, policy)
 			Expect(ipv4).To(BeEmpty())
 			Expect(ipv6).To(BeEmpty())
 		})
@@ -3388,9 +3388,9 @@ var _ = Describe("NFTables Functions", func() {
 					},
 				},
 			}
-			network := "default/net1"
+			policy := &datastore.Policy{Networks: []string{"default/net1"}}
 
-			ipv4, ipv6 := classifyAddresses(interfacesPerPod, network)
+			ipv4, ipv6 := classifyAddresses(interfacesPerPod, policy)
 
 			Expect(ipv4).To(HaveLen(3))
 			Expect(ipv4).To(ContainElements("10.0.1.1", "192.168.1.1", "172.16.1.1"))
@@ -3409,9 +3409,9 @@ var _ = Describe("NFTables Functions", func() {
 					},
 				},
 			}
-			network := "default/net1"
+			policy := &datastore.Policy{Networks: []string{"default/net1"}}
 
-			ipv4, ipv6 := classifyAddresses(interfacesPerPod, network)
+			ipv4, ipv6 := classifyAddresses(interfacesPerPod, policy)
 
 			// IPv4-mapped IPv6 addresses should be classified as IPv4
 			Expect(ipv4).To(HaveLen(2))
@@ -3434,9 +3434,9 @@ var _ = Describe("NFTables Functions", func() {
 					},
 				},
 			}
-			network := "default/net1" // Only net1
+			policy := &datastore.Policy{Networks: []string{"default/net1"}} // Only net1
 
-			ipv4, ipv6 := classifyAddresses(interfacesPerPod, network)
+			ipv4, ipv6 := classifyAddresses(interfacesPerPod, policy)
 
 			Expect(ipv4).To(HaveLen(1))
 			Expect(ipv4).To(ContainElement("10.0.1.1"))
@@ -3457,9 +3457,9 @@ var _ = Describe("NFTables Functions", func() {
 					},
 				},
 			}
-			network := "default/net1"
+			policy := &datastore.Policy{Networks: []string{"default/net1"}}
 
-			ipv4, ipv6 := classifyAddresses(interfacesPerPod, network)
+			ipv4, ipv6 := classifyAddresses(interfacesPerPod, policy)
 
 			// Should only include valid IPs
 			Expect(ipv4).To(HaveLen(2))
@@ -3487,9 +3487,9 @@ var _ = Describe("NFTables Functions", func() {
 					},
 				},
 			}
-			network := "default/net1"
+			policy := &datastore.Policy{Networks: []string{"default/net1"}}
 
-			ipv4, ipv6 := classifyAddresses(interfacesPerPod, network)
+			ipv4, ipv6 := classifyAddresses(interfacesPerPod, policy)
 
 			Expect(ipv4).To(HaveLen(2))
 			Expect(ipv4).To(ContainElements("10.0.1.1", "192.168.1.1"))
@@ -3508,9 +3508,9 @@ var _ = Describe("NFTables Functions", func() {
 					},
 				},
 			}
-			network := "default/net1"
+			policy := &datastore.Policy{Networks: []string{"default/net1"}}
 
-			ipv4, ipv6 := classifyAddresses(interfacesPerPod, network)
+			ipv4, ipv6 := classifyAddresses(interfacesPerPod, policy)
 			Expect(ipv4).To(BeEmpty())
 			Expect(ipv6).To(BeEmpty())
 		})
@@ -3525,9 +3525,9 @@ var _ = Describe("NFTables Functions", func() {
 					},
 				},
 			}
-			network := "default/net2" // Different network
+			policy := &datastore.Policy{Networks: []string{"default/net2"}} // Different network
 
-			ipv4, ipv6 := classifyAddresses(interfacesPerPod, network)
+			ipv4, ipv6 := classifyAddresses(interfacesPerPod, policy)
 			Expect(ipv4).To(BeEmpty())
 			Expect(ipv6).To(BeEmpty())
 		})
@@ -3549,9 +3549,9 @@ var _ = Describe("NFTables Functions", func() {
 					},
 				},
 			}
-			network := "default/net1"
+			policy := &datastore.Policy{Networks: []string{"default/net1"}}
 
-			ipv4, ipv6 := classifyAddresses(interfacesPerPod, network)
+			ipv4, ipv6 := classifyAddresses(interfacesPerPod, policy)
 
 			// IPv4-mapped IPv6 should be classified as IPv4
 			Expect(ipv4).To(HaveLen(1))
@@ -3583,9 +3583,9 @@ var _ = Describe("NFTables Functions", func() {
 					},
 				},
 			}
-			network := "default/net1"
+			policy := &datastore.Policy{Networks: []string{"default/net1"}}
 
-			ipv4, ipv6 := classifyAddresses(interfacesPerPod, network)
+			ipv4, ipv6 := classifyAddresses(interfacesPerPod, policy)
 
 			Expect(ipv4).To(HaveLen(2))
 			Expect(ipv4).To(ContainElements("10.0.1.1", "10.0.1.2"))
