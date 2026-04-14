@@ -64,10 +64,6 @@ func run() error {
 	flag.StringVar(&customIPv6IngressRuleFile, "custom-v6-ingress-rule-file", "", "custom rule file for IPv6 ingress")
 	flag.StringVar(&customIPv6EgressRuleFile, "custom-v6-egress-rule-file", "", "custom rule file for IPv6 egress")
 
-	// TODO: compatibility layer with the multus-networkpolicy-iptables image. Remove this once the ClsuterNetworkOperator is updated to use the nftables implementation.
-	var podIptables string
-	flag.StringVar(&podIptables, "pod-iptables", "", "compatibility layer")
-
 	opts := zap.Options{
 		Development: true,
 	}
@@ -106,26 +102,9 @@ func run() error {
 		return fmt.Errorf("unable to get custom nftables rules: %w", err)
 	}
 
-	// TODO: compatibility layer with the multus-networkpolicy-iptables image. Remove this once the ClsuterNetworkOperator is updated to use the nftables implementation.
-	commonRules = &nftables.CommonRules{}
-
 	// Set ICMP acceptance rules
 	commonRules.AcceptICMP = acceptICMP
 	commonRules.AcceptICMPv6 = acceptICMPv6
-
-	// TODO: put this in ClusterNetworkOperator
-	commonRules.CustomIPv6EgressRules = []string{
-		"icmpv6 type nd-neighbor-solicit accept",
-		"icmpv6 type nd-neighbor-advert accept",
-		"icmpv6 type nd-router-advert accept",
-		"icmpv6 type nd-router-solicit accept",
-	}
-	commonRules.CustomIPv6IngressRules = []string{
-		"icmpv6 type nd-neighbor-solicit accept",
-		"icmpv6 type nd-neighbor-advert accept",
-		"icmpv6 type nd-router-advert accept",
-		"icmpv6 type nd-router-solicit accept",
-	}
 
 	setupLog.Info("Common rules applied to all pods affected by MultiNetworkPolicies", "rules", commonRules)
 
