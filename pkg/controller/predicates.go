@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	multiv1beta1 "github.com/k8snetworkplumbingwg/multi-networkpolicy/pkg/apis/k8s.cni.cncf.io/v1beta1"
+	netdefv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	netdefutils "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -141,6 +142,25 @@ var PodPredicate = predicate.Funcs{
 		if oldEligible && newEligible {
 			if !reflect.DeepEqual(e.ObjectOld.GetLabels(), e.ObjectNew.GetLabels()) {
 				log.Log.V(2).Info("PodPredicate UpdateFunc", "reason", "Pod labels changed", "namespace", e.ObjectNew.GetNamespace(), "name", e.ObjectNew.GetName())
+				return true
+			}
+
+			// Watch for network-status annotation changes to catch delayed IPv6 address configuration
+			// This fixes a race condition where IPv6 addresses are configured via SLAAC after the pod
+			// becomes Running, causing policies to be applied before IPv6 addresses are available
+			oldAnnotations := e.ObjectOld.GetAnnotations()
+			newAnnotations := e.ObjectNew.GetAnnotations()
+
+			var oldNetworkStatus, newNetworkStatus string
+			if oldAnnotations != nil {
+				oldNetworkStatus = oldAnnotations[netdefv1.NetworkStatusAnnot]
+			}
+			if newAnnotations != nil {
+				newNetworkStatus = newAnnotations[netdefv1.NetworkStatusAnnot]
+			}
+
+			if oldNetworkStatus != newNetworkStatus {
+				log.Log.V(2).Info("PodPredicate UpdateFunc", "reason", "Network status changed", "namespace", e.ObjectNew.GetNamespace(), "name", e.ObjectNew.GetName())
 				return true
 			}
 		}
