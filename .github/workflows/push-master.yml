@@ -28,7 +28,7 @@ jobs:
 
       - name: Push to GitHub Container Registry
         if: github.repository_owner == 'k8snetworkplumbingwg'
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           push: true
           tags: |
