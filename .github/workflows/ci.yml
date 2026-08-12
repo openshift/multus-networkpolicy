@@ -21,7 +21,7 @@ jobs:
 
       - uses: golangci/golangci-lint-action@v7
         with:
-          version: v2.0.2
+          version: v2.12.2
           args: -v
 
   build:
@@ -60,7 +60,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Run tests
-        run: sudo make test
+        run: sudo env "PATH=$PATH" make test
 
   test-e2e:
     name: Run e2e tests
