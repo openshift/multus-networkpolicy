@@ -109,6 +109,10 @@ func (n *NFTables) enforcePolicy(ctx context.Context, pod *corev1.Pod, interface
 		logger.Info("Egress rules applied")
 	}
 
+	if logger.V(1).Enabled() {
+		logger.V(1).Info("Applying nftables transaction", "transaction", tx.String())
+	}
+
 	err = nft.Run(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("failed to run transaction: %w", err)
@@ -159,6 +163,10 @@ func ensureBasicStructure(ctx context.Context, nft knftables.Interface, commonRu
 
 	// Create common rules
 	createCommonRules(tx, commonRules, logger)
+
+	if logger.V(1).Enabled() {
+		logger.V(1).Info("Applying nftables basic structure transaction", "transaction", tx.String())
+	}
 
 	err = nft.Run(ctx, tx)
 	if err != nil {

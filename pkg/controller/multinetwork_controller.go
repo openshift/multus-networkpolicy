@@ -38,7 +38,7 @@ type MultiNetworkReconciler struct {
 
 // Reconcile handles the reconciliation of MultiNetworkPolicy resources
 func (m *MultiNetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithValues("namespace", req.NamespacedName.Namespace, "name", req.NamespacedName.Name)
+	logger := log.FromContext(ctx)
 
 	logger.Info("Starting reconciliation of MultiNetworkPolicy")
 
@@ -291,6 +291,13 @@ func (m *MultiNetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&multiv1beta1.MultiNetworkPolicy{}).
 		WithEventFilter(MultiNetworkPolicyPredicate).
+		WithLogConstructor(func(req *ctrl.Request) logr.Logger {
+			log := mgr.GetLogger()
+			if req != nil {
+				log = log.WithValues("namespace", req.Namespace, "name", req.Name)
+			}
+			return log
+		}).
 		Watches(
 			&corev1.Namespace{},
 			// We will enqueue policies with selectors that match the namespace

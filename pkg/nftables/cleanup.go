@@ -137,6 +137,10 @@ func cleanUp(ctx context.Context, nft knftables.Interface, policyName string, po
 		}
 	}
 
+	if logger.V(1).Enabled() {
+		logger.V(1).Info("Applying nftables cleanup transaction", "transaction", tx.String())
+	}
+
 	err = nft.Run(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("failed to run transaction: %w", err)
