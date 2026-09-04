@@ -3,6 +3,7 @@ module github.com/k8snetworkplumbingwg/multi-network-policy-nftables
 go 1.26.5
 
 require (
+	github.com/basekick-labs/arc v26.06.1
 	github.com/containernetworking/cni v1.3.0
 	github.com/containernetworking/plugins v1.9.0
 	github.com/go-logr/logr v1.4.3
