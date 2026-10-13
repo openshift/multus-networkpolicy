@@ -1,0 +1,122 @@
+table inet multi_networkpolicy {
+	comment "MultiNetworkPolicy"
+	set smi-7cef63aba7df2a3e78ee4cae8eef6bfe {
+		type ifname
+		comment "Managed interfaces set for test-ns/red-policy"
+		elements = { "ethred" }
+	}
+
+	set snp-7cef63aba7df2a3e78ee4cae8eef6bfe_ingress_ipv4_ethred_0 {
+		type ipv4_addr
+		comment "Addresses for test-ns/red-policy"
+		elements = { 10.0.1.10 }
+	}
+
+	set snp-7cef63aba7df2a3e78ee4cae8eef6bfe_ingress_ipv6_ethred_0 {
+		type ipv6_addr
+		comment "Addresses for test-ns/red-policy"
+		elements = { 2001:db8:1::10 }
+	}
+
+	set snp-7cef63aba7df2a3e78ee4cae8eef6bfe_egress_ipv4_ethred_0 {
+		type ipv4_addr
+		comment "Addresses for test-ns/red-policy"
+		elements = { 10.0.1.11 }
+	}
+
+	set snp-7cef63aba7df2a3e78ee4cae8eef6bfe_egress_ipv6_ethred_0 {
+		type ipv6_addr
+		comment "Addresses for test-ns/red-policy"
+		elements = { 2001:db8:1::11 }
+	}
+
+	set smi-b458cc915046bc2c60158623677c6364 {
+		type ifname
+		comment "Managed interfaces set for test-ns/blue-policy"
+		elements = { "ethblue" }
+	}
+
+	set snp-b458cc915046bc2c60158623677c6364_ingress_ipv4_ethblue_0 {
+		type ipv4_addr
+		comment "Addresses for test-ns/blue-policy"
+		elements = { 10.0.2.10 }
+	}
+
+	set snp-b458cc915046bc2c60158623677c6364_ingress_ipv6_ethblue_0 {
+		type ipv6_addr
+		comment "Addresses for test-ns/blue-policy"
+		elements = { 2001:db8:2::10 }
+	}
+
+	set snp-b458cc915046bc2c60158623677c6364_egress_ipv4_ethblue_0 {
+		type ipv4_addr
+		comment "Addresses for test-ns/blue-policy"
+		elements = { 10.0.2.11 }
+	}
+
+	set snp-b458cc915046bc2c60158623677c6364_egress_ipv6_ethblue_0 {
+		type ipv6_addr
+		comment "Addresses for test-ns/blue-policy"
+		elements = { 2001:db8:2::11 }
+	}
+
+	chain input {
+		comment "Input Dispatcher"
+		type filter hook input priority filter; policy accept;
+		iifname @smi-7cef63aba7df2a3e78ee4cae8eef6bfe jump ingress comment "test-ns/red-policy"
+		iifname @smi-b458cc915046bc2c60158623677c6364 jump ingress comment "test-ns/blue-policy"
+	}
+
+	chain output {
+		comment "Output Dispatcher"
+		type filter hook output priority filter; policy accept;
+		oifname @smi-7cef63aba7df2a3e78ee4cae8eef6bfe jump egress comment "test-ns/red-policy"
+		oifname @smi-b458cc915046bc2c60158623677c6364 jump egress comment "test-ns/blue-policy"
+	}
+
+	chain ingress {
+		comment "Ingress Policies"
+		ct state established,related accept comment "Connection tracking"
+		jump common-ingress comment "Jump to common"
+		jump cnp-7cef63aba7df2a3e78ee4cae8eef6bfe comment "test-ns/red-policy"
+		jump cnp-b458cc915046bc2c60158623677c6364 comment "test-ns/blue-policy"
+		drop comment "Drop rule"
+	}
+
+	chain common-ingress {
+		comment "Common Policies"
+	}
+
+	chain egress {
+		comment "Egress Policies"
+		ct state established,related accept comment "Connection tracking"
+		jump common-egress comment "Jump to common"
+		jump cnp-7cef63aba7df2a3e78ee4cae8eef6bfe comment "test-ns/red-policy"
+		jump cnp-b458cc915046bc2c60158623677c6364 comment "test-ns/blue-policy"
+		drop comment "Drop rule"
+	}
+
+	chain common-egress {
+		comment "Common Policies"
+	}
+
+	chain cnp-7cef63aba7df2a3e78ee4cae8eef6bfe {
+		comment "MultiNetworkPolicy test-ns/red-policy"
+		iifname "ethred" ip saddr 10.0.1.1 accept
+		iifname "ethred" ip6 saddr 2001:db8:1::1 accept
+		iifname "ethred" ip saddr @snp-7cef63aba7df2a3e78ee4cae8eef6bfe_ingress_ipv4_ethred_0 accept
+		iifname "ethred" ip6 saddr @snp-7cef63aba7df2a3e78ee4cae8eef6bfe_ingress_ipv6_ethred_0 accept
+		oifname "ethred" ip daddr @snp-7cef63aba7df2a3e78ee4cae8eef6bfe_egress_ipv4_ethred_0 accept
+		oifname "ethred" ip6 daddr @snp-7cef63aba7df2a3e78ee4cae8eef6bfe_egress_ipv6_ethred_0 accept
+	}
+
+	chain cnp-b458cc915046bc2c60158623677c6364 {
+		comment "MultiNetworkPolicy test-ns/blue-policy"
+		iifname "ethblue" ip saddr 10.0.2.1 accept
+		iifname "ethblue" ip6 saddr 2001:db8:2::1 accept
+		iifname "ethblue" ip saddr @snp-b458cc915046bc2c60158623677c6364_ingress_ipv4_ethblue_0 accept
+		iifname "ethblue" ip6 saddr @snp-b458cc915046bc2c60158623677c6364_ingress_ipv6_ethblue_0 accept
+		oifname "ethblue" ip daddr @snp-b458cc915046bc2c60158623677c6364_egress_ipv4_ethblue_0 accept
+		oifname "ethblue" ip6 daddr @snp-b458cc915046bc2c60158623677c6364_egress_ipv6_ethblue_0 accept
+	}
+}

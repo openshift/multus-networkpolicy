@@ -1,0 +1,282 @@
+---
+apiVersion: "k8s.cni.cncf.io/v1"
+kind: NetworkAttachmentDefinition
+metadata:
+  namespace: default
+  name: macvlan1-production
+spec:
+  config: '{
+            "cniVersion": "0.3.1",
+            "name": "macvlan1-production",
+            "plugins": [
+                {
+                    "type": "macvlan",
+                    "mode": "bridge",
+                    "ipam":{
+                      "type":"host-local",
+                      "subnet":"2.2.12.0/24",
+                      "rangeStart":"2.2.12.8",
+                      "rangeEnd":"2.2.12.67"
+                    }
+                }]
+        }'
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-production
+  labels:
+    environment: production
+    tier: web
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-external
+  labels:
+    environment: external
+    tier: external
+---
+# Pods
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-frontend
+  namespace: test-production
+  annotations:
+    k8s.v1.cni.cncf.io/networks: default/macvlan1-production
+  labels:
+    app: test-production
+    name: pod-frontend
+    tier: frontend
+spec:
+  containers:
+    - name: frontend
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["sh", "-c", "nc -klp 80 & nc -klp 443 & wait"]
+      ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        - name: https
+          containerPort: 443
+          protocol: TCP
+      securityContext:
+        privileged: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-backend
+  namespace: test-production
+  annotations:
+    k8s.v1.cni.cncf.io/networks: default/macvlan1-production
+  labels:
+    app: test-production
+    name: pod-backend
+    tier: backend
+spec:
+  containers:
+    - name: backend
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["sh", "-c", "nc -klp 80 & nc -klp 443 & nc -klp 22 & nc -klp 8080 & wait"]
+      ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        - name: https
+          containerPort: 443
+          protocol: TCP
+        - name: ssh
+          containerPort: 22
+          protocol: TCP
+        - name: metrics
+          containerPort: 8080
+          protocol: TCP
+      securityContext:
+        privileged: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-database
+  namespace: test-production
+  annotations:
+    k8s.v1.cni.cncf.io/networks: default/macvlan1-production
+  labels:
+    app: test-production
+    name: pod-database
+    tier: database
+spec:
+  containers:
+    - name: database
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-kl", "0.0.0.0", "3306"]
+      ports:
+        - name: mysql
+          containerPort: 3306
+          protocol: TCP
+      securityContext:
+        privileged: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-monitoring
+  namespace: test-production
+  annotations:
+    k8s.v1.cni.cncf.io/networks: default/macvlan1-production
+  labels:
+    app: test-production
+    name: pod-monitoring
+    tier: monitoring
+spec:
+  containers:
+    - name: monitoring
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-kl", "0.0.0.0", "8080"]
+      securityContext:
+        privileged: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-external
+  namespace: test-external
+  annotations:
+    k8s.v1.cni.cncf.io/networks: default/macvlan1-production
+  labels:
+    app: test-external
+    name: pod-external
+    tier: external
+spec:
+  containers:
+    - name: external
+      image: localhost:5000/multus-networkpolicy-nftables-tests:e2e
+      command: ["nc", "-kl", "0.0.0.0", "80"]
+      securityContext:
+        privileged: true
+---
+# MultiNetworkPolicies - Production-like Scenarios
+# Frontend Policy - Allow HTTP/HTTPS from external, block direct database access
+apiVersion: k8s.cni.cncf.io/v1beta1
+kind: MultiNetworkPolicy
+metadata:
+  name: frontend-policy
+  namespace: test-production
+  annotations:
+    k8s.v1.cni.cncf.io/policy-for: default/macvlan1-production
+spec:
+  podSelector:
+    matchLabels:
+      tier: frontend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              environment: production
+      ports:
+        - port: 80
+          protocol: TCP
+        - port: 443
+          protocol: TCP
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              tier: backend
+      ports:
+        - port: 80
+          protocol: TCP
+        - port: 443
+          protocol: TCP
+---
+# Backend Policy - Allow from frontend, access to database, monitoring access
+apiVersion: k8s.cni.cncf.io/v1beta1
+kind: MultiNetworkPolicy
+metadata:
+  name: backend-policy
+  namespace: test-production
+  annotations:
+    k8s.v1.cni.cncf.io/policy-for: default/macvlan1-production
+spec:
+  podSelector:
+    matchLabels:
+      tier: backend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              tier: frontend
+      ports:
+        - port: 80
+          protocol: TCP
+        - port: 443
+          protocol: TCP
+    - from:
+        - podSelector:
+            matchLabels:
+              tier: monitoring
+      ports:
+        - port: 8080
+          protocol: TCP
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              tier: database
+      ports:
+        - port: 3306
+          protocol: TCP
+---
+# Database Policy - Only allow backend access
+apiVersion: k8s.cni.cncf.io/v1beta1
+kind: MultiNetworkPolicy
+metadata:
+  name: database-policy
+  namespace: test-production
+  annotations:
+    k8s.v1.cni.cncf.io/policy-for: default/macvlan1-production
+spec:
+  podSelector:
+    matchLabels:
+      tier: database
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              tier: backend
+      ports:
+        - port: 3306
+          protocol: TCP
+---
+# Monitoring Policy - Allow access to backend metrics
+apiVersion: k8s.cni.cncf.io/v1beta1
+kind: MultiNetworkPolicy
+metadata:
+  name: monitoring-policy
+  namespace: test-production
+  annotations:
+    k8s.v1.cni.cncf.io/policy-for: default/macvlan1-production
+spec:
+  podSelector:
+    matchLabels:
+      tier: monitoring
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              tier: backend
+      ports:
+        - port: 8080
+          protocol: TCP

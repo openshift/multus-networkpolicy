@@ -1,0 +1,57 @@
+table inet multi_networkpolicy {
+	comment "MultiNetworkPolicy"
+	set smi-3f832ba47abcd4bfdd1910b4c60d3453 {
+		type ifname
+		comment "Managed interfaces set for test-ns/accept-ports"
+		elements = { "eth1",
+			     "eth2" }
+	}
+
+	chain input {
+		comment "Input Dispatcher"
+		type filter hook input priority filter; policy accept;
+		iifname @smi-3f832ba47abcd4bfdd1910b4c60d3453 jump ingress comment "test-ns/accept-ports"
+	}
+
+	chain output {
+		comment "Output Dispatcher"
+		type filter hook output priority filter; policy accept;
+		oifname @smi-3f832ba47abcd4bfdd1910b4c60d3453 jump egress comment "test-ns/accept-ports"
+	}
+
+	chain ingress {
+		comment "Ingress Policies"
+		ct state established,related accept comment "Connection tracking"
+		jump common-ingress comment "Jump to common"
+		jump cnp-3f832ba47abcd4bfdd1910b4c60d3453 comment "test-ns/accept-ports"
+		drop comment "Drop rule"
+	}
+
+	chain common-ingress {
+		comment "Common Policies"
+	}
+
+	chain egress {
+		comment "Egress Policies"
+		ct state established,related accept comment "Connection tracking"
+		jump common-egress comment "Jump to common"
+		jump cnp-3f832ba47abcd4bfdd1910b4c60d3453 comment "test-ns/accept-ports"
+		drop comment "Drop rule"
+	}
+
+	chain common-egress {
+		comment "Common Policies"
+	}
+
+	chain cnp-3f832ba47abcd4bfdd1910b4c60d3453 {
+		comment "MultiNetworkPolicy test-ns/accept-ports"
+		iifname "eth1" ip saddr 10.0.1.1 accept
+		iifname "eth1" ip6 saddr 2001:db8:1::1 accept
+		iifname "eth2" ip saddr 10.0.2.1 accept
+		iifname "eth2" ip6 saddr 2001:db8:2::1 accept
+		iifname "eth1" tcp dport { 80, 443, 8000-8010 } accept
+		iifname "eth2" tcp dport { 80, 443, 8000-8010 } accept
+		oifname "eth1" tcp dport 443 accept
+		oifname "eth2" tcp dport 443 accept
+	}
+}
