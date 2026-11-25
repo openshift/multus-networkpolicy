@@ -14,8 +14,9 @@ Dockerfile.cross
 *.out
 coverage.html
 
-# Go workspace file
-go.work
+# Go workspace file at the repository root. Vendored dependencies may contain
+# their own go.work files, which must remain tracked for verify-deps.
+/go.work
 
 # Kubernetes Generated files - skip generated files, except for vendored files
 !vendor/**/zz_generated.*
