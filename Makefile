@@ -1,5 +1,5 @@
-ENVTEST_VERSION ?= release-0.24
-ENVTEST_K8S_VERSION ?= 1.36
+ENVTEST_VERSION ?= release-0.25
+ENVTEST_K8S_VERSION ?= 1.37
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin

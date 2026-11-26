@@ -38,13 +38,13 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: multi-networkpolicy-nftables
-    namespace: default
+    namespace: kube-system
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: multi-networkpolicy-nftables
-  namespace: default
+  namespace: kube-system
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -56,11 +56,7 @@ metadata:
     app: multi-networkpolicy
 data:
   custom-v4-rules.txt: |
-    # Custom IPv4 rules for e2e testing
-    # Allow traffic on port 9999 for testing custom rules
-    tcp dport 9999 accept
-    # Allow traffic from specific IP range
-    ip saddr 192.168.100.0/24 accept
+    # Add custom IPv4 rules here if needed
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -72,17 +68,13 @@ metadata:
     app: multi-networkpolicy
 data:
   custom-v6-rules.txt: |
-    # Custom IPv6 rules for e2e testing
-    # Allow traffic on port 9999 for testing custom rules
-    tcp dport 9999 accept
-    # Allow traffic from specific IPv6 range
-    ip6 saddr 2001:db8:100::/64 accept
+    # Add custom IPv6 rules here if needed
 ---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: multi-networkpolicy-nftables
-  namespace: default
+  namespace: kube-system
   labels:
     app: multi-networkpolicy-nftables
 spec:
@@ -100,7 +92,7 @@ spec:
       serviceAccountName: multi-networkpolicy-nftables
       containers:
         - name: multi-networkpolicy-nftables
-          image: localhost:5000/multus-networkpolicy-nftables:e2e
+          image: ghcr.io/k8snetworkplumbingwg/multi-networkpolicy-nftables:v0.1.0
           imagePullPolicy: Always
           command:
             - /multi-networkpolicy-nftables
@@ -109,16 +101,14 @@ spec:
             - "--container-runtime-endpoint=/run/crio/crio.sock"
             - "--network-plugins=macvlan,ipvlan"
             - "--host-prefix=/host"
-            # accept all icmp/icmpv6 types for e2e testing
+            # accept all icmp/icmpv6 types
             - "--accept-icmp"
             - "--accept-icmpv6"
-            # custom rules for e2e testing
+            # custom rules
             - "--custom-v4-ingress-rule-file=/etc/multi-networkpolicy/rules/custom-v4-rules.txt"
             - "--custom-v4-egress-rule-file=/etc/multi-networkpolicy/rules/custom-v4-rules.txt"
             - "--custom-v6-ingress-rule-file=/etc/multi-networkpolicy/rules/custom-v6-rules.txt"
             - "--custom-v6-egress-rule-file=/etc/multi-networkpolicy/rules/custom-v6-rules.txt"
-            # enable debug logging for e2e
-            - "--zap-log-level=2"
           resources:
             requests:
               cpu: "100m"
